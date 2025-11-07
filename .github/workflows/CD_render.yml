@@ -1,0 +1,43 @@
+name: Deploy to Render
+
+on:
+  push:
+    branches: [main, trunk]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Render (${{ github.ref_name }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Select Render deploy hook by branch
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "DEPLOY_HOOK_URL=${{ secrets.RENDER_DEPLOY_HOOK_URL_MAIN }}" >> $GITHUB_ENV
+            echo "Target: Render (main)"
+          elif [ "${GITHUB_REF_NAME}" = "trunk" ]; then
+            echo "DEPLOY_HOOK_URL=${{ secrets.RENDER_DEPLOY_HOOK_URL_TRUNK }}" >> $GITHUB_ENV
+            echo "Target: Render (trunk)"
+          else
+            echo "Branch ${GITHUB_REF_NAME} no configurada para despliegue"
+            exit 78
+          fi
+
+      - name: Trigger Render deploy
+        run: |
+          if [ -z "${DEPLOY_HOOK_URL:-}" ]; then
+            echo "Falta DEPLOY_HOOK_URL"; exit 1
+          fi
+          # Render recomienda POST al deploy hook
+          curl -fsS -X POST "$DEPLOY_HOOK_URL"
