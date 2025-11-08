@@ -109,7 +109,22 @@ chico sundermann">
                                 class="align-middle">My datasets</span>
                         </a>
                     </li>
-
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dataset.list_communities') }}">
+                            Comunidades
+                            </a>
+                        </li>
+                        
+                        {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link btn btn-sm btn-outline-primary" 
+                            href="{{ url_for('dataset.create_community') }}">
+                            + Crear Comunidad
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
                     <li class="sidebar-header">
                         Options
                     </li>

@@ -1,0 +1,48 @@
+{% extends "base_template.html" %} 
+
+{% block content %}
+<div class="container my-5">
+    <h2>Crear Nueva Comunidad en {{ FLASK_APP_NAME }}</h2>
+    <p>Define el nombre, la descripción y sube el logo de tu comunidad.</p>
+
+    <form method="POST" action="{{ url_for('dataset.create_community') }}" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <div class="row">
+            <div class="col-md-8">
+                
+                <div class="mb-3">
+                    <label for="{{ form.name.id }}" class="form-label">{{ form.name.label }}</label>
+                    {{ form.name(class="form-control") }}
+                    {% for error in form.name.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.description.id }}" class="form-label">{{ form.description.label }}</label>
+                    {{ form.description(class="form-control", rows=5) }}
+                    {% for error in form.description.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.logo.id }}" class="form-label">{{ form.logo.label }}</label>
+                    {{ form.logo(class="form-control", id=form.logo.id) }}
+                    {% for error in form.logo.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                    <small class="form-text text-muted">Archivos permitidos: JPG, JPEG, PNG.</small>
+                </div>
+                
+                </div>
+        </div>
+
+        <hr>
+        
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('dataset.list_communities') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}
