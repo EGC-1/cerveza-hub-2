@@ -3,7 +3,6 @@ name: test-and-coverage
 on:
   push:
     branches: [ trunk ]
-  pull_request:
 
 jobs:
   test-and-coverage:
