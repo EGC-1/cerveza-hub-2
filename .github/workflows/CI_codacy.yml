@@ -1,105 +1,75 @@
-name: Codacy
+name: test-and-coverage
 
 on:
   push:
-    branches: [main, trunk]
-  pull_request:
-    branches: [main, trunk]
+    branches: [ main, develop, feature_task_workflows ]
 
-permissions:
-  contents: read
-  security-events: read
 
 jobs:
   test-and-coverage:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.11', '3.12']
 
     services:
-      mariadb:
-        image: mariadb:10.11
+      mysql:
+        image: mysql:8.0
         env:
-          MARIADB_ROOT_PASSWORD: uvlhub_root_password
-          MARIADB_DATABASE: uvlhubdb_test
-          MARIADB_USER: uvlhub_user
-          MARIADB_PASSWORD: uvlhub_password
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: cervezahub_test
+          MYSQL_USER: default_user
+          MYSQL_PASSWORD: default_password
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mariadb-admin ping -u root -p$MARIADB_ROOT_PASSWORD"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=5
+          --health-retries=10
+
+    # 👇 Estas variables las debe leer tu config de SQLAlchemy
+    env:
+      DB_USER: default_user
+      DB_PASSWORD: default_password
+      DB_NAME: cervezahub_test
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DATABASE_URL: mysql+pymysql://default_user:default_password@127.0.0.1:3306/cervezahub_test
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: ${{ runner.os }}-pip-
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # Asegura pytest-cov si no está en requirements:
-          python - <<'PY'
-          import pkgutil, sys
-          sys.exit(0 if pkgutil.find_loader('pytest_cov') else 1)
-          PY
-          if [ $? -ne 0 ]; then pip install pytest-cov; fi
+          # si tienes otro fichero (requirements-dev.txt, poetry, etc), añádelo aquí
+          # pip install -r requirements-dev.txt
 
-      - name: Install MariaDB client (for wait check)
+      - name: Wait for MySQL
         run: |
-          sudo apt-get update
-          sudo apt-get install -y mariadb-client
-
-      - name: Wait for DB ready
-        env:
-          MARIADB_ROOT_PASSWORD: uvlhub_root_password
-        run: |
-          for i in {1..60}; do
-            mariadb-admin ping -h 127.0.0.1 -P 3306 -uroot -p"$MARIADB_ROOT_PASSWORD" --silent && break
-            echo "Waiting for MariaDB ($i/60)..."
+          for i in {1..30}; do
+            if mysqladmin ping -h127.0.0.1 -uroot -proot --silent; then
+              echo "MySQL is up"
+              break
+            fi
+            echo "Waiting for MySQL..."
             sleep 2
           done
 
-      - name: Check for outdated dependencies
-        run: pip list --outdated || true
-
-      - name: Security audit (non-blocking)
-        run: |
-          pip install pip-audit
-          pip-audit || true
-
       - name: Run tests with coverage
-        env:
-          FLASK_ENV: testing
-          DB_HOST: 127.0.0.1
-          DB_PORT: 3306
-          DB_NAME: uvlhubdb_test
-          DB_USER: uvlhub_user
-          DB_PASSWORD: uvlhub_password
         run: |
-          pytest -q --ignore-glob='*selenium*' --cov=app --cov-report=xml
+          pytest --cov=app --cov-report=xml
 
-      - name: Upload coverage to Codacy (only once, safe for forks)
-        if: >
-          matrix.python-version == '3.12' &&
-          (github.event_name == 'push' ||
-           (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false))
-        uses: codacy/codacy-coverage-reporter-action@v1
-        with:
-          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-          coverage-reports: coverage.xml
+      # Opcional: subida a Codacy si lo usáis
+      - name: Upload coverage to Codacy
+        if: always()
+        run: |
+          pip install codacy-coverage
+          python-codacy-coverage -r coverage.xml
+        env:
+          CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
