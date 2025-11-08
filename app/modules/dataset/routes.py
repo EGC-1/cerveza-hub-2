@@ -278,37 +278,34 @@ def get_unsynchronized_dataset(dataset_id):
 @login_required
 def create_community():
     form = CommunityForm()
-    
-    if request.method == "POST":
-
-
-        if not form.validate_on_submit():
-            logger.error(f"Formulario de comunidad inválido: {form.errors}")
-            return jsonify({"message": form.errors}), 400
-
+    if form.validate_on_submit():
 
         logo_file = request.files.get("logo")
-        
-
         if logo_file and logo_file.filename != '':
-             if not form.logo.validate(form, extra_validators=form.logo.validators):
-                  return jsonify({"message": "Tipo de archivo de logo no permitido."}), 400
+            try:
+                if not form.logo.validate(form, extra_validators=form.logo.validators):
+                    if not form.logo.errors:
+                        form.logo.errors.append("Tipo de archivo de logo no permitido.")
+                    pass 
+
+            except Exception:
+                form.logo.errors.append("Error al procesar el archivo de logo.")
+                pass
+                
         else:
             logo_file = None 
+        if not form.errors:
+            try:
+                community = community_service.create_from_form(
+                    form=form, 
+                    current_user=current_user, 
+                    logo_file=logo_file
+                )
+                return redirect(url_for('dataset.view_community', community_id=community.id))
 
-        try:
-            community = community_service.create_from_form(
-                form=form, 
-                current_user=current_user, 
-                logo_file=logo_file
-            )
-            
-            return redirect(url_for('dataset.view_community', community_id=community.id))
-
-        except Exception as exc:
-            logger.exception(f"Excepción al crear la comunidad: {exc}")
-            return jsonify({"Error": "No se pudo crear la comunidad."}), 500
-
+            except Exception as exc:
+                logger.exception(f"Excepción al crear la comunidad: {exc}")
+                form.name.errors.append("Ya existe una comunidad con este nombre. Por favor, elige otro.")
     return render_template("community/create_community.html", form=form)
 
 
