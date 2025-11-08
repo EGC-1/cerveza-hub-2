@@ -3,7 +3,7 @@ name: test-and-coverage
 on:
   push:
     branches: [ main, develop, feature_task_workflows ]
-
+  pull_request:
 
 jobs:
   test-and-coverage:
@@ -46,6 +46,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          # Si tienes otro fichero (requirements-dev.txt, etc.), añádelo aquí
 
       - name: Wait for MySQL
         run: |
@@ -60,7 +61,7 @@ jobs:
 
       - name: Run tests with coverage (sin Selenium)
         run: |
-          pytest --cov=app --cov-report=xml -k "not selenium"
+          pytest --cov=app --cov-report=xml --ignore-glob="*test_selenium.py"
 
       - name: Upload coverage to Codacy
         if: always()
