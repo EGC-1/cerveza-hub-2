@@ -14,7 +14,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          # 👇 La BD que realmente usan los tests: 'default_db'
+          # Base de datos que usan los tests (según el error: 'default_db')
           MYSQL_DATABASE: default_db
           MYSQL_USER: default_user
           MYSQL_PASSWORD: default_password
@@ -32,7 +32,6 @@ jobs:
       DB_NAME: default_db
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
-      # 👇 Por si tu config usa DATABASE_URL
       DATABASE_URL: mysql+pymysql://default_user:default_password@127.0.0.1:3306/default_db
 
     steps:
@@ -61,9 +60,11 @@ jobs:
             sleep 2
           done
 
-      - name: Run tests with coverage (sin Selenium)
+      - name: Run tests with coverage (sin tests Selenium)
         run: |
-          pytest --cov=app --cov-report=xml --ignore-glob="*test_selenium.py"
+          pytest --cov=app --cov-report=xml \
+            --ignore-glob="*test_selenium.py" \
+            --ignore-glob="*test_selenium_ide*"
 
       - name: Upload coverage to Codacy
         if: always()
