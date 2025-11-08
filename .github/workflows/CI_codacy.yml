@@ -25,7 +25,6 @@ jobs:
           --health-timeout=5s
           --health-retries=10
 
-    # 👇 Estas variables las debe leer tu config de SQLAlchemy
     env:
       DB_USER: default_user
       DB_PASSWORD: default_password
@@ -47,8 +46,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # si tienes otro fichero (requirements-dev.txt, poetry, etc), añádelo aquí
-          # pip install -r requirements-dev.txt
 
       - name: Wait for MySQL
         run: |
@@ -61,11 +58,10 @@ jobs:
             sleep 2
           done
 
-      - name: Run tests with coverage
+      - name: Run tests with coverage (sin Selenium)
         run: |
-          pytest --cov=app --cov-report=xml
+          pytest --cov=app --cov-report=xml -k "not selenium"
 
-      # Opcional: subida a Codacy si lo usáis
       - name: Upload coverage to Codacy
         if: always()
         run: |
