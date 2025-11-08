@@ -6,7 +6,6 @@
         <div class="col-md-3 text-center">
             {% if community.logo_path %}
                 <img src="{{ url_for('dataset.serve_community_logo', community_id=community.id) }}" alt="Logo de {{ community.name }}" class="card-img-top" style="max-height: 200px; object-fit: cover;">
-                     
             {% else %}
                 <div class="border rounded-circle bg-light d-flex align-items-center justify-content-center mb-3" style="width: 150px; height: 150px;">
                     <i class="fas fa-users fa-3x text-muted"></i>
@@ -31,14 +30,23 @@
                 </div>
             </div>
 
+            {% if current_user.is_authenticated and current_user.id == community.creator_user_id %}
+                <div class="d-flex justify-content-end mt-4 mb-2">
+                    <a href="{{ url_for('dataset.manage_community_datasets', community_id=community.id) }}" 
+                       class="btn btn-success btn-sm">
+                        <i class="fas fa-edit"></i> Gestionar Datasets
+                    </a>
+                </div>
+            {% endif %}
+
             <h4 class="mt-5">Datasets en esta Comunidad</h4>
-            {% if community.datasets %}
+            {% if community.datasets %} 
                 <ul class="list-group">
-                    {% for dataset in community.datasets%}
+                    {% for dataset in community.datasets %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ dataset.title }}
-                            <span class="badge bg-secondary rounded-pill">ID: {{ dataset.id }}</span>
-                        </li>
+                                {{ dataset.name() }}
+                    
+                            </li>
                     {% endfor %}
                 </ul>
             {% else %}

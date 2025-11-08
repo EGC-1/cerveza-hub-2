@@ -16,12 +16,13 @@ from flask import (
     request,
     send_from_directory,
     url_for,
+    flash,
 )
 from flask_login import current_user, login_required
 
 from app.modules.dataset import dataset_bp
-from app.modules.dataset.forms import DataSetForm, CommunityForm
-from app.modules.dataset.models import DSDownloadRecord
+from app.modules.dataset.forms import DataSetForm, CommunityForm, CommunityDatasetForm
+from app.modules.dataset.models import DSDownloadRecord, DataSet
 from app.modules.dataset.services import (
     AuthorService,
     DataSetService,
@@ -345,3 +346,38 @@ def serve_community_logo(community_id):
     
     # ... (control de seguridad y envío)
     return send_from_directory(directory, filename)
+
+
+@dataset_bp.route("/community/<int:community_id>/manage_datasets", methods=["GET", "POST"])
+@login_required 
+def manage_community_datasets(community_id):
+
+    community = community_service.get_or_404(community_id)
+    form = CommunityDatasetForm()
+    all_datasets = DataSet.query.order_by(DataSet.created_at.desc()).all()
+    dataset_choices = [(str(ds.id), f"{ds.name()} (ID: {ds.id})") for ds in all_datasets] 
+    form.datasets.choices = dataset_choices 
+
+    if form.validate_on_submit():
+
+        try:
+            selected_dataset_ids = form.datasets.data 
+            selected_datasets = DataSet.query.filter(DataSet.id.in_(selected_dataset_ids)).all()
+
+            community_service.update_datasets(community_id, selected_datasets)
+
+            flash(f"Datasets actualizados para la comunidad '{community.name}'.", 'success')
+            return redirect(url_for('dataset.view_community', community_id=community.id))
+        
+        except Exception as exc:
+
+            community_service.repository.session.rollback() 
+            flash('Error al guardar la relación de datasets.', 'danger')
+
+    elif request.method == 'GET':
+        current_dataset_ids = [str(ds.id) for ds in community.datasets] 
+        form.datasets.data = current_dataset_ids
+    
+    return render_template("community/manage_datasets.html", 
+                           community=community, 
+                           form=form)

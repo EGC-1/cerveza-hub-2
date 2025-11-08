@@ -1,96 +1,4 @@
-2025-11-08 13:56:44,680 - app.modules.dataset.routes - ERROR - Excepción al listar comunidades: base.html
-Traceback (most recent call last):
-  File "/app/app/modules/dataset/routes.py", line 328, in list_communities
-    return render_template("community/list_communities.html", communities=communities)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 150, in render_template
-    return _render(app, template, context)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 131, in _render
-    rv = template.render(context)
-         ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 1295, in render
-    self.environment.handle_exception()
-  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
-    raise rewrite_traceback_stack(source=source)
-  File "/app/app/modules/dataset/templates/community/list_communities.html", line 1, in top-level template code
-    {% extends "base.html" %}
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 65, in get_source
-    return self._get_source_fast(environment, template)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 99, in _get_source_fast
-    raise TemplateNotFound(template)
-jinja2.exceptions.TemplateNotFound: base.html
-2025-11-08 14:00:19,241 - app.modules.dataset.routes - ERROR - Excepción al listar comunidades: base.html
-Traceback (most recent call last):
-  File "/app/app/modules/dataset/routes.py", line 328, in list_communities
-    return render_template("community/list_communities.html", communities=communities)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 150, in render_template
-    return _render(app, template, context)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 131, in _render
-    rv = template.render(context)
-         ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 1295, in render
-    self.environment.handle_exception()
-  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
-    raise rewrite_traceback_stack(source=source)
-  File "/app/app/modules/dataset/templates/community/list_communities.html", line 1, in top-level template code
-    {% extends "base.html" %}
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 65, in get_source
-    return self._get_source_fast(environment, template)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 99, in _get_source_fast
-    raise TemplateNotFound(template)
-jinja2.exceptions.TemplateNotFound: base.html
-2025-11-08 14:00:21,900 - app.modules.dataset.routes - ERROR - Excepción al listar comunidades: base.html
-Traceback (most recent call last):
-  File "/app/app/modules/dataset/routes.py", line 328, in list_communities
-    return render_template("community/list_communities.html", communities=communities)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 150, in render_template
-    return _render(app, template, context)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 131, in _render
-    rv = template.render(context)
-         ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 1295, in render
-    self.environment.handle_exception()
-  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
-    raise rewrite_traceback_stack(source=source)
-  File "/app/app/modules/dataset/templates/community/list_communities.html", line 1, in top-level template code
-    {% extends "base.html" %}
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 65, in get_source
-    return self._get_source_fast(environment, template)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 99, in _get_source_fast
-    raise TemplateNotFound(template)
-jinja2.exceptions.TemplateNotFound: base.html
-2025-11-08 14:00:31,525 - app.modules.dataset.routes - ERROR - Excepción al listar comunidades: base.html
-Traceback (most recent call last):
-  File "/app/app/modules/dataset/routes.py", line 328, in list_communities
-    return render_template("community/list_communities.html", communities=communities)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 150, in render_template
-    return _render(app, template, context)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 131, in _render
-    rv = template.render(context)
-         ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 1295, in render
-    self.environment.handle_exception()
-  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
-    raise rewrite_traceback_stack(source=source)
-  File "/app/app/modules/dataset/templates/community/list_communities.html", line 1, in top-level template code
-    {% extends "base.html" %}
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 65, in get_source
-    return self._get_source_fast(environment, template)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 99, in _get_source_fast
-    raise TemplateNotFound(template)
-jinja2.exceptions.TemplateNotFound: base.html
-2025-11-08 14:31:43,177 - app.modules.dataset.routes - ERROR - Excepción al listar comunidades: Could not build url for endpoint 'dataset.serve_community_logo' with values ['community_id']. Did you mean 'dataset.view_community' instead?
+2025-11-08 14:31:51,188 - app.modules.dataset.routes - ERROR - Excepción al listar comunidades: Could not build url for endpoint 'dataset.serve_community_logo' with values ['community_id']. Did you mean 'dataset.view_community' instead?
 Traceback (most recent call last):
   File "/app/app/modules/dataset/routes.py", line 328, in list_communities
     return render_template("community/list_communities.html", communities=communities)
@@ -123,3 +31,98 @@ Traceback (most recent call last):
   File "/usr/local/lib/python3.12/site-packages/werkzeug/routing/map.py", line 924, in build
     raise BuildError(endpoint, values, method, self)
 werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'dataset.serve_community_logo' with values ['community_id']. Did you mean 'dataset.view_community' instead?
+2025-11-08 14:32:01,902 - app.modules.dataset.routes - ERROR - Formulario de comunidad inválido: {'name': ['Field must be between 5 and 120 characters long.']}
+2025-11-08 14:32:17,440 - app.modules.dataset.routes - ERROR - Formulario de comunidad inválido: {'name': ['Field must be between 5 and 120 characters long.']}
+2025-11-08 14:32:19,939 - app.modules.dataset.routes - ERROR - Formulario de comunidad inválido: {'name': ['Field must be between 5 and 120 characters long.']}
+2025-11-08 14:33:45,455 - app.modules.dataset.routes - ERROR - Excepción al listar comunidades: base.html
+Traceback (most recent call last):
+  File "/app/app/modules/dataset/routes.py", line 328, in list_communities
+    return render_template("community/list_communities.html", communities=communities)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/app/app/modules/dataset/templates/community/list_communities.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 65, in get_source
+    return self._get_source_fast(environment, template)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 99, in _get_source_fast
+    raise TemplateNotFound(template)
+jinja2.exceptions.TemplateNotFound: base.html
+2025-11-08 14:33:57,299 - app.modules.dataset.routes - ERROR - Excepción al listar comunidades: base.html
+Traceback (most recent call last):
+  File "/app/app/modules/dataset/routes.py", line 328, in list_communities
+    return render_template("community/list_communities.html", communities=communities)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/app/app/modules/dataset/templates/community/list_communities.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 65, in get_source
+    return self._get_source_fast(environment, template)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 99, in _get_source_fast
+    raise TemplateNotFound(template)
+jinja2.exceptions.TemplateNotFound: base.html
+2025-11-08 14:34:15,146 - app.modules.dataset.routes - ERROR - Excepción al listar comunidades: base.html
+Traceback (most recent call last):
+  File "/app/app/modules/dataset/routes.py", line 328, in list_communities
+    return render_template("community/list_communities.html", communities=communities)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/app/app/modules/dataset/templates/community/list_communities.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 65, in get_source
+    return self._get_source_fast(environment, template)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 99, in _get_source_fast
+    raise TemplateNotFound(template)
+jinja2.exceptions.TemplateNotFound: base.html
+2025-11-08 14:34:38,388 - app.modules.dataset.routes - ERROR - Excepción al listar comunidades: base.html
+Traceback (most recent call last):
+  File "/app/app/modules/dataset/routes.py", line 328, in list_communities
+    return render_template("community/list_communities.html", communities=communities)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 150, in render_template
+    return _render(app, template, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 131, in _render
+    rv = template.render(context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/app/app/modules/dataset/templates/community/list_communities.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 65, in get_source
+    return self._get_source_fast(environment, template)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 99, in _get_source_fast
+    raise TemplateNotFound(template)
+jinja2.exceptions.TemplateNotFound: base.html

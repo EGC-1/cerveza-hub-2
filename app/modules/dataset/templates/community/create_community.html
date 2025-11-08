@@ -8,35 +8,53 @@
     <form method="POST" action="{{ url_for('dataset.create_community') }}" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
 
+        {# 💡 Mejora: Mostrar errores del formulario que no están asociados a un campo específico #}
+        {% if form.errors and not form.name.errors and not form.description.errors and not form.logo.errors %}
+            <div class="alert alert-danger" role="alert">
+                Hubo un error al procesar el formulario. Por favor, revisa tus entradas.
+                {# Opcional: Mostrar todos los errores no específicos #}
+                {% for field, errors in form.errors.items() %}
+                    {% if field not in ['name', 'description', 'logo'] %}
+                        {% for error in errors %}
+                            <p class="mb-0">**{{ field|capitalize }}**: {{ error }}</p>
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+        {# Fin Mejora #}
+
         <div class="row">
             <div class="col-md-8">
                 
                 <div class="mb-3">
                     <label for="{{ form.name.id }}" class="form-label">{{ form.name.label }}</label>
-                    {{ form.name(class="form-control") }}
+                    {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }} 
+                    {# 💡 Clase 'is-invalid' para resaltar el campo en rojo #}
                     {% for error in form.name.errors %}
-                        <div class="text-danger">{{ error }}</div>
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                        {# Tu campo de nombre ya tiene este bloque. Si usas validate_name(), el error aparecerá aquí. #}
                     {% endfor %}
                 </div>
                 
                 <div class="mb-3">
                     <label for="{{ form.description.id }}" class="form-label">{{ form.description.label }}</label>
-                    {{ form.description(class="form-control", rows=5) }}
+                    {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), rows=5) }}
                     {% for error in form.description.errors %}
-                        <div class="text-danger">{{ error }}</div>
+                        <div class="text-danger small mt-1">{{ error }}</div>
                     {% endfor %}
                 </div>
 
                 <div class="mb-3">
                     <label for="{{ form.logo.id }}" class="form-label">{{ form.logo.label }}</label>
-                    {{ form.logo(class="form-control", id=form.logo.id) }}
+                    {{ form.logo(class="form-control" + (" is-invalid" if form.logo.errors else ""), id=form.logo.id) }}
                     {% for error in form.logo.errors %}
-                        <div class="text-danger">{{ error }}</div>
+                        <div class="text-danger small mt-1">{{ error }}</div>
                     {% endfor %}
                     <small class="form-text text-muted">Archivos permitidos: JPG, JPEG, PNG.</small>
                 </div>
                 
-                </div>
+            </div>
         </div>
 
         <hr>

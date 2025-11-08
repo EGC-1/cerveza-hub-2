@@ -147,8 +147,8 @@ class Community(db.Model):
     
     creator_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    datasets = db.relationship("DataSet", secondary=community_dataset_association, 
-                               backref=db.backref("communities", lazy="dynamic"))
+    datasets = db.relationship(
+        "DataSet", secondary=community_dataset_association, backref=db.backref("communities", lazy="dynamic"), lazy="dynamic")
 
     def __repr__(self):
         return f"Community<{self.id} - {self.name}>"

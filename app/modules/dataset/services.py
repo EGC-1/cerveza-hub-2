@@ -26,6 +26,7 @@ from app.modules.hubfile.repositories import (
 )
 from core.services.BaseService import BaseService
 from werkzeug.utils import secure_filename
+
 logger = logging.getLogger(__name__)
 
 class CommunityService(BaseService):
@@ -45,9 +46,6 @@ class CommunityService(BaseService):
 
 
         if logo_file and logo_file.filename != '':
-        
-            
-            
             working_dir = os.getenv("WORKING_DIR", os.path.join(os.getcwd(), "tmp_uploads")) 
             
             original_filename = secure_filename(logo_file.filename)
@@ -68,6 +66,11 @@ class CommunityService(BaseService):
         return community
     def get_all_communities(self):
         return self.repository.get_all_ordered_by_creation()
+    
+    def update_datasets(self, community_id, new_datasets):
+        community = self.get_or_404(community_id)
+        community.datasets = new_datasets 
+        self.repository.session.commit()
     
 def calculate_checksum_and_size(file_path):
     file_size = os.path.getsize(file_path)
