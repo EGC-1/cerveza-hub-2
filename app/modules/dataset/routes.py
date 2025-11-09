@@ -22,6 +22,8 @@ from flask_login import current_user, login_required
 from app.modules.dataset import dataset_bp
 from app.modules.dataset.forms import DataSetForm
 from app.modules.dataset.models import DSDownloadRecord
+from app import db
+
 from app.modules.dataset.services import (
     AuthorService,
     DataSetService,
@@ -229,6 +231,13 @@ def download_dataset(dataset_id):
             download_date=datetime.now(timezone.utc),
             download_cookie=user_cookie,
         )
+        
+        try:
+            dataset.download_count += 1
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error al incrementar el contador de descargas: {e}")
 
     return resp
 
