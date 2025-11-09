@@ -4,7 +4,7 @@ import os
 import shutil
 import tempfile
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from zipfile import ZipFile
 
 from flask import (
@@ -21,7 +21,7 @@ from flask_login import current_user, login_required
 
 from app.modules.dataset import dataset_bp
 from app.modules.dataset.forms import DataSetForm
-from app.modules.dataset.models import DSDownloadRecord
+from app.modules.dataset.models import DSDownloadRecord, DSViewRecord
 from app import db
 
 from app.modules.dataset.services import (
@@ -241,6 +241,55 @@ def download_dataset(dataset_id):
 
     return resp
 
+@dataset_bp.route("/dataset/<int:dataset_id>/stats", methods=["GET"])
+def get_dataset_stats(dataset_id):
+    """
+    Retrieve the stats for a given dataset, including some "curious" statistics (download rate, age, author count, etc.)
+    """
+    dataset = dataset_service.get_or_404(dataset_id)
+
+    # BASIC METRICS
+    total_views = DSViewRecord.query.filter_by(dataset_id=dataset_id).count()
+    total_downloads = dataset.download_count
+    dataset_age_in_days = (datetime.now(timezone.utc).replace(tzinfo=None) - dataset.created_at).days
+    authors_number = len(dataset.ds_meta_data.authors)
+
+    # SPECIFIC DATASET METRICS
+    features_count = 0
+    models_count = 0
+    if dataset.ds_meta_data.ds_metrics:
+        features_count = dataset.ds_meta_data.ds_metrics.number_of_features
+        models_count = dataset.ds_meta_data.ds_metrics.number_of_models
+
+    # POPULAR METRICS
+    seven_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
+    
+    download_rate = 0
+    if total_views > 0:
+        download_rate = round((total_downloads / total_views) * 100, 2)
+    
+    views_last_week = DSViewRecord.query.filter(
+        DSViewRecord.dataset_id == dataset_id,
+        DSViewRecord.view_date >= seven_days_ago).count()
+
+    downloads_last_week = DSDownloadRecord.query.filter(
+        DSDownloadRecord.dataset_id == dataset_id,
+        DSDownloadRecord.download_date >= seven_days_ago).count()
+
+    return render_template(
+        "dataset/statistics.html",
+        dataset=dataset,
+        
+        total_views=total_views,
+        total_downloads=total_downloads,
+        dataset_age_in_days=dataset_age_in_days,
+        authors_number=authors_number,
+        features_count=features_count,
+        models_count=models_count,
+        download_rate=download_rate,
+        views_last_week=views_last_week,
+        downloads_last_week=downloads_last_week
+    )
 
 @dataset_bp.route("/doi/<path:doi>/", methods=["GET"])
 def subdomain_index(doi):
