@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+from flask_mail import Mail # 1. Importar Flask-Mail
 
 from core.configuration.configuration import get_app_version
 from core.managers.config_manager import ConfigManager
@@ -15,6 +16,7 @@ load_dotenv()
 
 db = SQLAlchemy()
 migrate = Migrate()
+mail = Mail() # 2. Crear la instancia global de Mail
 
 
 def create_app(config_name="development"):
@@ -25,6 +27,9 @@ def create_app(config_name="development"):
 
     db.init_app(app)
     migrate.init_app(app, db)
+    
+    # 3. Inicializar Flask-Mail con la app
+    mail.init_app(app) 
 
     module_manager = ModuleManager(app)
     module_manager.register_modules()

@@ -3,7 +3,7 @@ import re
 import unidecode
 from sqlalchemy import any_, or_
 
-from app.modules.dataset.models import Author, DataSet, DSMetaData, PublicationType
+from app.modules.dataset.models import Author, DataSet, DSMetaData, PublicationType, Community
 from app.modules.featuremodel.models import FeatureModel, FMMetaData
 from core.repositories.BaseRepository import BaseRepository
 
@@ -12,7 +12,7 @@ class ExploreRepository(BaseRepository):
     def __init__(self):
         super().__init__(DataSet)
 
-    def filter(self, query="", sorting="newest", publication_type="any", tags=[], **kwargs):
+    def filter(self, query="", sorting="newest", publication_type="any", tags=[], community_id=None, **kwargs):
         # Normalize and remove unwanted characters
         normalized_query = unidecode.unidecode(query).lower()
         cleaned_query = re.sub(r'[,.":\'()\[\]^;!¡¿?]', "", normalized_query)
@@ -39,6 +39,17 @@ class ExploreRepository(BaseRepository):
             .filter(or_(*filters))
             .filter(DSMetaData.dataset_doi.isnot(None))  # Exclude datasets with empty dataset_doi
         )
+
+        if community_id is not None and community_id != "":
+            try:
+                community_id_int = int(community_id)
+                
+                if community_id_int > 0: 
+                    datasets = datasets.filter(
+                        DataSet.communities.any(Community.id == community_id_int)
+                    )
+            except ValueError:
+                pass
 
         if publication_type != "any":
             matching_type = None
