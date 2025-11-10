@@ -1,0 +1,37 @@
+<!-- Esta plantilla es un ejemplo del contenido que se enviaría por correo. 
+     NOTA: En app/modules/auth/utils.py ya estoy usando un mensaje HTML simple directo en la función,
+     pero si usaras 'render_template' en esa función, este sería el contenido. -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Restablecimiento de Contraseña</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+
+    <div style="max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+        <h2 style="color: #4CAF50;">Restablecimiento de Contraseña Solicitado</h2>
+        <p>Hola,</p>
+        <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta. Si fuiste tú, haz clic en el siguiente botón para continuar:</p>
+
+        <!-- El enlace real (reset_url) se pasa como contexto al renderizar la plantilla -->
+        <p style="text-align: center; margin: 30px 0;">
+            <a href="{{ reset_url }}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Restablecer Contraseña
+            </a>
+        </p>
+
+        <p>Este enlace de restablecimiento expirará en 1 hora.</p>
+
+        <p>Si no solicitaste el restablecimiento de tu contraseña, puedes ignorar este correo electrónico sin preocuparte.</p>
+
+        <p>Saludos cordiales,</p>
+        <p>El Equipo de Cerveza-Hub</p>
+
+        <hr style="margin-top: 20px; border: 0; border-top: 1px solid #eee;">
+        <p style="font-size: 12px; color: #999;">Si el botón no funciona, copia y pega el siguiente enlace en tu navegador:</p>
+        <p style="font-size: 12px; word-break: break-all;">{{ reset_url }}</p>
+    </div>
+
+</body>
+</html>
