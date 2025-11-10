@@ -16,14 +16,14 @@ from flask import (
     request,
     send_from_directory,
     url_for,
+    flash,
 )
 from flask_login import current_user, login_required
 
 from app.modules.dataset import dataset_bp
-from app.modules.dataset.forms import DataSetForm
-from app.modules.dataset.models import DSDownloadRecord, DSViewRecord
 from app import db
-
+from app.modules.dataset.forms import DataSetForm, CommunityForm, CommunityDatasetForm
+from app.modules.dataset.models import DSDownloadRecord, DataSet, DSViewRecord
 from app.modules.dataset.services import (
     AuthorService,
     DataSetService,
@@ -31,6 +31,7 @@ from app.modules.dataset.services import (
     DSDownloadRecordService,
     DSMetaDataService,
     DSViewRecordService,
+    CommunityService,
 )
 from app.modules.zenodo.services import ZenodoService
 
@@ -43,7 +44,7 @@ dsmetadata_service = DSMetaDataService()
 zenodo_service = ZenodoService()
 doi_mapping_service = DOIMappingService()
 ds_view_record_service = DSViewRecordService()
-
+community_service = CommunityService()
 
 @dataset_bp.route("/dataset/upload", methods=["GET", "POST"])
 @login_required
@@ -328,3 +329,109 @@ def get_unsynchronized_dataset(dataset_id):
         abort(404)
 
     return render_template("dataset/view_dataset.html", dataset=dataset)
+
+
+@dataset_bp.route("/community/create", methods=["GET", "POST"])
+@login_required
+def create_community():
+    form = CommunityForm()
+    if form.validate_on_submit():
+
+        logo_file = request.files.get("logo")
+        if logo_file and logo_file.filename != '':
+            try:
+                if not form.logo.validate(form, extra_validators=form.logo.validators):
+                    if not form.logo.errors:
+                        form.logo.errors.append("Tipo de archivo de logo no permitido.")
+                    pass 
+
+            except Exception:
+                form.logo.errors.append("Error al procesar el archivo de logo.")
+                pass
+                
+        else:
+            logo_file = None 
+        if not form.errors:
+            try:
+                community = community_service.create_from_form(
+                    form=form, 
+                    current_user=current_user, 
+                    logo_file=logo_file
+                )
+                return redirect(url_for('dataset.view_community', community_id=community.id))
+
+            except Exception as exc:
+                logger.exception(f"Excepción al crear la comunidad: {exc}")
+                form.name.errors.append("Ya existe una comunidad con este nombre. Por favor, elige otro.")
+    return render_template("community/create_community.html", form=form)
+
+
+@dataset_bp.route("/community/<int:community_id>/", methods=["GET"])
+def view_community(community_id):
+    community = community_service.get_or_404(community_id)
+    return render_template("community/view_community.html", community=community)
+
+@dataset_bp.route("/communities/", methods=["GET"])
+def list_communities():
+    """Muestra una lista de todas las comunidades creadas."""
+    
+    try:
+        communities = community_service.get_all_communities()
+        
+        return render_template("community/list_communities.html", communities=communities)
+        
+    except Exception as exc:
+        logger.exception(f"Excepción al listar comunidades: {exc}")
+        return jsonify({"Error": "No se pudo cargar la lista de comunidades."}), 500
+    
+@dataset_bp.route("/community/<int:community_id>/logo", methods=["GET"])
+def serve_community_logo(community_id):
+
+    
+    community = community_service.get_or_404(community_id)
+    full_path = community.logo_path
+    
+    if not full_path or not os.path.exists(full_path):
+
+        return redirect(url_for('static', filename='images/default_community_logo.png'))
+    working_dir = os.getenv("WORKING_DIR", os.path.join(os.getcwd(), "tmp_uploads")) 
+    directory = os.path.dirname(full_path)
+    filename = os.path.basename(full_path) 
+    
+    # ... (control de seguridad y envío)
+    return send_from_directory(directory, filename)
+
+
+@dataset_bp.route("/community/<int:community_id>/manage_datasets", methods=["GET", "POST"])
+@login_required 
+def manage_community_datasets(community_id):
+
+    community = community_service.get_or_404(community_id)
+    form = CommunityDatasetForm()
+    all_datasets = DataSet.query.order_by(DataSet.created_at.desc()).all()
+    dataset_choices = [(str(ds.id), f"{ds.name()} (ID: {ds.id})") for ds in all_datasets] 
+    form.datasets.choices = dataset_choices 
+
+    if form.validate_on_submit():
+
+        try:
+            selected_dataset_ids = form.datasets.data 
+            selected_datasets = DataSet.query.filter(DataSet.id.in_(selected_dataset_ids)).all()
+
+            community_service.update_datasets(community_id, selected_datasets)
+
+            flash(f"Datasets actualizados para la comunidad '{community.name}'.", 'success')
+            return redirect(url_for('dataset.view_community', community_id=community.id))
+        
+        except Exception as exc:
+
+            community_service.repository.session.rollback() 
+            flash('Error al guardar la relación de datasets.', 'danger')
+
+    elif request.method == 'GET':
+        current_dataset_ids = [str(ds.id) for ds in community.datasets] 
+        form.datasets.data = current_dataset_ids
+    
+    return render_template("community/manage_datasets.html", 
+                           community=community, 
+                           form=form)
