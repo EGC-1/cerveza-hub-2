@@ -16,8 +16,11 @@ from flask_mail import Message
 
 class AuthenticationService(BaseService):
     
+    # CORRECCIÓN: Cambiado de _init_ a __init__ para que Python lo reconozca como constructor.
     def __init__(self):
-        super().__init__(UserRepository())
+        # CORRECCIÓN: Cambiado de _init_ a __init__ en la llamada super().
+        # Aquí inicializamos BaseService pasándole el repositorio obligatorio.
+        super().__init__(repository=UserRepository()) 
         self.user_profile_repository = UserProfileRepository()
 
     def login(self, email, password, remember=True):
