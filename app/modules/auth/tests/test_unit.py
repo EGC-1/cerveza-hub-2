@@ -79,19 +79,6 @@ def test_signup_user_successful(test_client):
     assert response.request.path == url_for("public.index"), "Signup was unsuccessful"
 
 
-def test_service_create_with_profie_success(clean_database):
-    role_test = Role(id=1, name="user", description="Default user role")
-    db.session.add(role_test)
-    db.session.commit()
-
-    data = {"name": "Test", "surname": "Foo", "email": "service_test@example.com", "password": "test1234"}
-
-    AuthenticationService().create_with_profile(**data)
-
-    assert UserRepository().count() == 1
-    assert UserProfileRepository().count() == 1
-
-
 def test_service_create_with_profile_fail_no_email(clean_database):
     data = {"name": "Test", "surname": "Foo", "email": "", "password": "1234"}
 
@@ -102,7 +89,7 @@ def test_service_create_with_profile_fail_no_email(clean_database):
     with pytest.raises(ValueError, match="Email is required."):
         AuthenticationService().create_with_profile(**data)
 
-    assert UserRepository().count() == 1
+    assert UserRepository().count() == 0
     assert UserProfileRepository().count() == 0
 
 
@@ -116,5 +103,17 @@ def test_service_create_with_profile_fail_no_password(clean_database):
     with pytest.raises(ValueError, match="Password is required."):
         AuthenticationService().create_with_profile(**data)
 
-    assert UserRepository().count() == 1 
+    assert UserRepository().count() == 0
     assert UserProfileRepository().count() == 0
+
+def test_service_create_with_profie_success(clean_database):
+    role_test = Role(id=1, name="user", description="Default user role")
+    db.session.add(role_test)
+    db.session.commit()
+
+    data = {"name": "Test", "surname": "Foo", "email": "service_test@example.com", "password": "test1234"}
+
+    AuthenticationService().create_with_profile(**data)
+
+    assert UserRepository().count() == 1
+    assert UserProfileRepository().count() == 1
