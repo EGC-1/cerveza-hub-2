@@ -4,8 +4,10 @@ import os
 import shutil
 import tempfile
 import uuid
+import pandas as pd
 from datetime import datetime, timezone, timedelta
 from zipfile import ZipFile
+from werkzeug.utils import secure_filename
 
 from flask import (
     abort,
@@ -17,13 +19,14 @@ from flask import (
     send_from_directory,
     url_for,
     flash,
+    current_app,
 )
 from flask_login import current_user, login_required
 
 from app.modules.dataset import dataset_bp
 from app import db
 from app.modules.dataset.forms import DataSetForm, CommunityForm, CommunityDatasetForm
-from app.modules.dataset.models import DSDownloadRecord, DataSet, DSViewRecord
+from app.modules.dataset.models import DSDownloadRecord, DSMetaData, DataSet, DSViewRecord, Author
 from app.modules.dataset.services import (
     AuthorService,
     DataSetService,
@@ -47,65 +50,93 @@ ds_view_record_service = DSViewRecordService()
 community_service = CommunityService()
 
 @dataset_bp.route("/dataset/upload", methods=["GET", "POST"])
-@login_required
 def create_dataset():
     form = DataSetForm()
-    if request.method == "POST":
-
-        dataset = None
-
-        if not form.validate_on_submit():
-            return jsonify({"message": form.errors}), 400
-
+    
+    if form.validate_on_submit():
+        f = form.csv_file.data
+        filename = secure_filename(f.filename)
+    
         try:
-            logger.info("Creating dataset...")
-            dataset = dataset_service.create_from_form(form=form, current_user=current_user)
-            logger.info(f"Created dataset: {dataset}")
-            dataset_service.move_feature_models(dataset)
+            f.seek(0) 
+            df = pd.read_csv(f)
+            csv_row_count = len(df)
+            csv_column_names = ','.join(df.columns.tolist())
+            f.seek(0)
+            
+            metadata_dict = form.get_dsmetadata()
+            meta_data = DSMetaData(**metadata_dict)
+            
+            authors_list = form.get_authors()
+            for author_data in authors_list:
+                meta_data.authors.append(Author(**author_data))
+                
+            dataset = DataSet(
+                user_id=current_user.id,
+                ds_meta_data=meta_data,
+                row_count=csv_row_count,
+                column_names=csv_column_names
+            )
+            
+            db.session.add(meta_data)
+            db.session.add(dataset)
+            db.session.commit() 
+
+            upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+            dataset_folder = os.path.join(
+                upload_folder, 
+                f'user_{current_user.id}', 
+                f'dataset_{dataset.id}'
+            )
+            os.makedirs(dataset_folder, exist_ok=True)
+            file_path = os.path.join(dataset_folder, filename)
+            f.save(file_path)
+
+            dataset.csv_file_path = file_path
+            db.session.commit()
+            
+            logger.info(f"Creado dataset CSV: {dataset}")
+
         except Exception as exc:
-            logger.exception(f"Exception while create dataset data in local {exc}")
-            return jsonify({"Exception while create dataset data in local: ": str(exc)}), 400
+            db.session.rollback()
+            logger.exception(f"Exception while create CSV dataset data in local {exc}")
+            flash(f"Error al crear el dataset local: {exc}", "danger")
+            return render_template("dataset/upload_dataset.html", form=form)
 
         # send dataset as deposition to Zenodo
         data = {}
         try:
             zenodo_response_json = zenodo_service.create_new_deposition(dataset)
-            response_data = json.dumps(zenodo_response_json)
-            data = json.loads(response_data)
+            data = json.loads(json.dumps(zenodo_response_json))
         except Exception as exc:
             data = {}
-            zenodo_response_json = {}
             logger.exception(f"Exception while create dataset data in Zenodo {exc}")
 
         if data.get("conceptrecid"):
             deposition_id = data.get("id")
-
-            # update dataset with deposition id in Zenodo
             dataset_service.update_dsmetadata(dataset.ds_meta_data_id, deposition_id=deposition_id)
 
             try:
-                # iterate for each feature model (one feature model = one request to Zenodo)
-                for feature_model in dataset.feature_models:
-                    zenodo_service.upload_file(dataset, deposition_id, feature_model)
+                logger.info(f"Subiendo {file_path} a Zenodo...")
+                zenodo_service.upload_file(dataset, deposition_id, file_path, filename)
 
-                # publish deposition
                 zenodo_service.publish_deposition(deposition_id)
 
-                # update DOI
                 deposition_doi = zenodo_service.get_doi(deposition_id)
                 dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=deposition_doi)
+                
+                flash('¡Tu Cerveza-Dataset se ha subido y publicado en Zenodo!', 'success')
+                
             except Exception as e:
-                msg = f"it has not been possible upload feature models in Zenodo and update the DOI: {e}"
-                return jsonify({"message": msg}), 200
+                msg = f"Dataset creado localmente (id: {dataset.id}), pero ha fallado la subida a Zenodo: {e}"
+                logger.exception(msg)
+                flash(msg, 'warning')
+                
+        else:
+             flash('Dataset creado localmente, pero ha fallado la conexión con Zenodo.', 'warning')
 
-        # Delete temp folder
-        file_path = current_user.temp_folder()
-        if os.path.exists(file_path) and os.path.isdir(file_path):
-            shutil.rmtree(file_path)
-
-        msg = "Everything works!"
-        return jsonify({"message": msg}), 200
-
+        return redirect(url_for('dataset.dataset_detail', dataset_id=dataset.id)) 
+        
     return render_template("dataset/upload_dataset.html", form=form)
 
 
@@ -125,17 +156,13 @@ def upload():
     file = request.files["file"]
     temp_folder = current_user.temp_folder()
 
-    if not file or not file.filename.endswith(".uvl"):
-        return jsonify({"message": "No valid file"}), 400
+    if not file or not file.filename.endswith(".csv"):
+        return jsonify({"message": "Archivo no válido. Solo se permiten .csv"}), 400
 
-    # create temp folder
     if not os.path.exists(temp_folder):
         os.makedirs(temp_folder)
-
     file_path = os.path.join(temp_folder, file.filename)
-
     if os.path.exists(file_path):
-        # Generate unique filename (by recursion)
         base_name, extension = os.path.splitext(file.filename)
         i = 1
         while os.path.exists(os.path.join(temp_folder, f"{base_name} ({i}){extension}")):
@@ -144,7 +171,6 @@ def upload():
         file_path = os.path.join(temp_folder, new_filename)
     else:
         new_filename = file.filename
-
     try:
         file.save(file_path)
     except Exception as e:
@@ -153,7 +179,7 @@ def upload():
     return (
         jsonify(
             {
-                "message": "UVL uploaded and validated successfully",
+                "message": "CSV subido y validado correctamente",
                 "filename": new_filename,
             }
         ),
@@ -162,6 +188,7 @@ def upload():
 
 
 @dataset_bp.route("/dataset/file/delete", methods=["POST"])
+@login_required
 def delete():
     data = request.get_json()
     filename = data.get("file")
@@ -255,24 +282,18 @@ def get_dataset_stats(dataset_id):
     dataset_age_in_days = (datetime.now(timezone.utc).replace(tzinfo=None) - dataset.created_at).days
     authors_number = len(dataset.ds_meta_data.authors)
 
-    # SPECIFIC DATASET METRICS
-    features_count = 0
-    models_count = 0
-    if dataset.ds_meta_data.ds_metrics:
-        features_count = dataset.ds_meta_data.ds_metrics.number_of_features
-        models_count = dataset.ds_meta_data.ds_metrics.number_of_models
+    # --- MÉTRICAS DE CSV ---
+    filas_count = dataset.row_count or 0
+    columnas_count = len(dataset.column_names.split(',')) if dataset.column_names else 0
 
     # POPULAR METRICS
     seven_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
-    
     download_rate = 0
     if total_views > 0:
         download_rate = round((total_downloads / total_views) * 100, 2)
-    
     views_last_week = DSViewRecord.query.filter(
         DSViewRecord.dataset_id == dataset_id,
         DSViewRecord.view_date >= seven_days_ago).count()
-
     downloads_last_week = DSDownloadRecord.query.filter(
         DSDownloadRecord.dataset_id == dataset_id,
         DSDownloadRecord.download_date >= seven_days_ago).count()
@@ -285,8 +306,10 @@ def get_dataset_stats(dataset_id):
         total_downloads=total_downloads,
         dataset_age_in_days=dataset_age_in_days,
         authors_number=authors_number,
-        features_count=features_count,
-        models_count=models_count,
+        
+        filas_count=filas_count,
+        columnas_count=columnas_count,
+        
         download_rate=download_rate,
         views_last_week=views_last_week,
         downloads_last_week=downloads_last_week
@@ -295,24 +318,40 @@ def get_dataset_stats(dataset_id):
 @dataset_bp.route("/doi/<path:doi>/", methods=["GET"])
 def subdomain_index(doi):
 
-    # Check if the DOI is an old DOI
     new_doi = doi_mapping_service.get_new_doi(doi)
     if new_doi:
-        # Redirect to the same path with the new DOI
         return redirect(url_for("dataset.subdomain_index", doi=new_doi), code=302)
 
-    # Try to search the dataset by the provided DOI (which should already be the new one)
     ds_meta_data = dsmetadata_service.filter_by_doi(doi)
-
     if not ds_meta_data:
         abort(404)
 
-    # Get dataset
     dataset = ds_meta_data.data_set
+    if not dataset:
+        logger.error(f"No se encontró un DataSet para los metadatos con DOI {doi}")
+        abort(404)
 
-    # Save the cookie to the user's browser
+    # --- INICIO DE LÓGICA DE VISTA PREVIA ---
+    csv_header = []
+    csv_preview = []
+    try:
+        if dataset.csv_file_path and os.path.exists(dataset.csv_file_path):
+            df = pd.read_csv(dataset.csv_file_path)
+            csv_header = df.columns.tolist()
+            csv_preview = df.head(10).values.tolist()
+    except Exception as e:
+        logger.exception(f"No se pudo generar la vista previa del CSV para {dataset.id}: {e}")
+        pass 
+    # --- FIN DE LÓGICA DE VISTA PREVIA ---
+
     user_cookie = ds_view_record_service.create_cookie(dataset=dataset)
-    resp = make_response(render_template("dataset/view_dataset.html", dataset=dataset))
+    
+    resp = make_response(render_template(
+        "dataset/view_dataset.html", 
+        dataset=dataset,
+        csv_header=csv_header,   
+        csv_preview=csv_preview   
+    ))
     resp.set_cookie("view_cookie", user_cookie)
 
     return resp
@@ -322,14 +361,29 @@ def subdomain_index(doi):
 @login_required
 def get_unsynchronized_dataset(dataset_id):
 
-    # Get dataset
     dataset = dataset_service.get_unsynchronized_dataset(current_user.id, dataset_id)
-
     if not dataset:
         abort(404)
 
-    return render_template("dataset/view_dataset.html", dataset=dataset)
+    # LÓGICA DE VISTA PREVIA
+    csv_header = []
+    csv_preview = []
+    try:
+        if dataset.csv_file_path and os.path.exists(dataset.csv_file_path):
+            df = pd.read_csv(dataset.csv_file_path)
+            csv_header = df.columns.tolist()
+            csv_preview = df.head(10).values.tolist()
+    except Exception as e:
+        logger.exception(f"No se pudo generar la vista previa del CSV para {dataset.id}: {e}")
+        pass 
+    # FIN LÓGICA DE VISTA PREVIA 
 
+    return render_template(
+        "dataset/view_dataset.html", 
+        dataset=dataset,
+        csv_header=csv_header,    
+        csv_preview=csv_preview   
+    )
 
 @dataset_bp.route("/community/create", methods=["GET", "POST"])
 @login_required

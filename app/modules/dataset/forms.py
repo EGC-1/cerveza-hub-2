@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import FieldList, FormField, SelectField, StringField, ValidationError, SelectMultipleField, SubmitField, TextAreaField
 from wtforms.validators import URL, DataRequired, Optional, Length
-from flask_wtf.file import FileField, FileAllowed
+from flask_wtf.file import FileField, FileAllowed, FileRequired
 from app.modules.dataset.models import PublicationType, DataSet, Community
 
 class CommunityDatasetForm(FlaskForm):
@@ -51,38 +51,6 @@ class CommunityForm(FlaskForm):
     def validate_name(self, name):
         if Community.query.filter_by(name=name.data).first():
             raise ValidationError('Ya existe una comunidad con este nombre. Por favor, elige otro.')
-        
-class FeatureModelForm(FlaskForm):
-    uvl_filename = StringField("UVL Filename", validators=[DataRequired()])
-    title = StringField("Title", validators=[Optional()])
-    desc = TextAreaField("Description", validators=[Optional()])
-    publication_type = SelectField(
-        "Publication type",
-        choices=[(pt.value, pt.name.replace("_", " ").title()) for pt in PublicationType],
-        validators=[Optional()],
-    )
-    publication_doi = StringField("Publication DOI", validators=[Optional(), URL()])
-    tags = StringField("Tags (separated by commas)")
-    version = StringField("UVL Version")
-    authors = FieldList(FormField(AuthorForm))
-
-    class Meta:
-        csrf = False  # disable CSRF because is subform
-
-    def get_authors(self):
-        return [author.get_author() for author in self.authors]
-
-    def get_fmmetadata(self):
-        return {
-            "uvl_filename": self.uvl_filename.data,
-            "title": self.title.data,
-            "description": self.desc.data,
-            "publication_type": self.publication_type.data,
-            "publication_doi": self.publication_doi.data,
-            "tags": self.tags.data,
-            "uvl_version": self.version.data,
-        }
-
 
 class DataSetForm(FlaskForm):
     title = StringField("Title", validators=[DataRequired()])
@@ -96,7 +64,14 @@ class DataSetForm(FlaskForm):
     dataset_doi = StringField("Dataset DOI", validators=[Optional(), URL()])
     tags = StringField("Tags (separated by commas)")
     authors = FieldList(FormField(AuthorForm))
-    feature_models = FieldList(FormField(FeatureModelForm), min_entries=1)
+    
+    csv_file = FileField(
+        'Archivo CSV del Dataset',
+        validators=[
+            FileRequired(message='¡No has seleccionado ningún archivo!'),
+            FileAllowed(['csv'], message='¡Solo se permiten archivos .csv!')
+        ]
+    )
 
     submit = SubmitField("Submit")
 
@@ -121,6 +96,3 @@ class DataSetForm(FlaskForm):
 
     def get_authors(self):
         return [author.get_author() for author in self.authors]
-
-    def get_feature_models(self):
-        return [fm.get_feature_model() for fm in self.feature_models]

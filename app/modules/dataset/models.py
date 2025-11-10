@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+import os
 
 from flask import request
 from sqlalchemy import Enum as SQLAlchemyEnum
@@ -41,15 +42,6 @@ class Author(db.Model):
         return {"name": self.name, "affiliation": self.affiliation, "orcid": self.orcid}
 
 
-class DSMetrics(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    number_of_models = db.Column(db.String(120))
-    number_of_features = db.Column(db.String(120))
-
-    def __repr__(self):
-        return f"DSMetrics<models={self.number_of_models}, features={self.number_of_features}>"
-
-
 class DSMetaData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     deposition_id = db.Column(db.Integer)
@@ -59,8 +51,7 @@ class DSMetaData(db.Model):
     publication_doi = db.Column(db.String(120))
     dataset_doi = db.Column(db.String(120))
     tags = db.Column(db.String(120))
-    ds_metrics_id = db.Column(db.Integer, db.ForeignKey("ds_metrics.id"))
-    ds_metrics = db.relationship("DSMetrics", uselist=False, backref="ds_meta_data", cascade="all, delete")
+
     authors = db.relationship("Author", backref="ds_meta_data", lazy=True, cascade="all, delete")
 
 
@@ -73,14 +64,19 @@ class DataSet(db.Model):
     download_count = db.Column(db.Integer, default=0, nullable=False)
 
     ds_meta_data = db.relationship("DSMetaData", backref=db.backref("data_set", uselist=False))
-    feature_models = db.relationship("FeatureModel", backref="data_set", lazy=True, cascade="all, delete")
+    
+    csv_file_path = db.Column(db.String(500), nullable=True)
+    row_count = db.Column(db.Integer)
+    column_names = db.Column(db.Text)
 
     def name(self):
         return self.ds_meta_data.title
 
     def files(self):
-        return [file for fm in self.feature_models for file in fm.files]
-
+        if self.csv_file_path:
+            return [self.csv_file_path]
+        return []
+    
     def delete(self):
         db.session.delete(self)
         db.session.commit()
@@ -92,10 +88,15 @@ class DataSet(db.Model):
         return f"https://zenodo.org/record/{self.ds_meta_data.deposition_id}" if self.ds_meta_data.dataset_doi else None
 
     def get_files_count(self):
-        return sum(len(fm.files) for fm in self.feature_models)
+        return 1 if self.csv_file_path else 0
 
     def get_file_total_size(self):
-        return sum(file.size for fm in self.feature_models for file in fm.files)
+        try:
+            if self.csv_file_path and os.path.exists(self.csv_file_path):
+                return os.path.getsize(self.csv_file_path)
+        except Exception:
+            pass
+        return 0
 
     def get_file_total_size_for_human(self):
         from app.modules.dataset.services import SizeService
@@ -122,11 +123,19 @@ class DataSet(db.Model):
             "url": self.get_uvlhub_doi(),
             "download": f'{request.host_url.rstrip("/")}/dataset/download/{self.id}',
             "zenodo": self.get_zenodo_url(),
-            "files": [file.to_dict() for fm in self.feature_models for file in fm.files],
-            "files_count": self.get_files_count(),
-            "total_size_in_bytes": self.get_file_total_size(),
-            "total_size_in_human_format": self.get_file_total_size_for_human(),
+            "files": [{
+                "name": os.path.basename(self.csv_file_path) if self.csv_file_path else "N/A",
+                "size_in_bytes": self.get_file_total_size()
+            }] if self.csv_file_path else [],
+            "files_count": self.get_files_count(), 
+            "total_size_in_bytes": self.get_file_total_size(), 
+            "total_size_in_human_format": self.get_file_total_size_for_human(), 
             "download_count": self.download_count,
+          
+            "csv_metrics": {
+                "row_count": self.row_count,
+                "columns": self.column_names.split(',') if self.column_names else []
+            }
         }
 
     def __repr__(self):

@@ -26,16 +26,18 @@
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div>
-                        <h1><b>{{ dataset.ds_meta_data.title }}</b></h1>
+                        <h1 class="h2 mb-3"><b>Estadísticas:</b> {{ dataset.ds_meta_data.title }}</h1>
+                        <a href="{{ url_for('dataset.subdomain_index', doi=dataset.ds_meta_data.dataset_doi.replace('https://doi.org/', '')) }}" class="btn btn-outline-primary btn-sm mt-2">
+                            <i data-feather="arrow-left" class="me-1"></i> Volver al Dataset
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
 
-
         <div class="card mt-4">
             <div class="card-header">
-                <h5 class="card-title mb-0">Estadísticas</h5>
+                <h5 class="card-title mb-0">Resumen de Estadísticas</h5>
             </div>
             <div class="card-body">
                 
@@ -59,18 +61,19 @@
                     </li>
                 </ul>
 
-                <h6 class="card-subtitle mb-2 text-muted">Métricas del Dataset</h6>
+         
+                <h6 class="card-subtitle mb-2 text-muted">Métricas del CSV</h6>
                 <ul class="list-group list-group-flush mb-3">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Número de características
-                        <span>{{ features_count }}</span>
+                        Número de Filas (Registros)
+                        <span>{{ filas_count }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Número de modelos
-                        <span>{{ models_count }}</span>
+                        Número de Columnas
+                        <span>{{ columnas_count }}</span>
                     </li>
                 </ul>
-
+          
                 <h6 class="card-subtitle mb-2 text-muted">Popularidad</h6>
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -92,12 +95,12 @@
     </div>
 </div>
 
-<!-- Modal-->
+
 <div class="modal fade" id="fileViewerModal" tabindex="-1" aria-labelledby="fileViewerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" style="height: 80vh; display: flex; align-items: center;">
         <div class="modal-content" style="height: 80vh;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h5 class="modal-title" id="fileViewerModalLabel">Feature model view</h5>
+                <h5 class="modal-title" id="fileViewerModalLabel">Vista de Archivo</h5> <!-- Título corregido -->
                 <div>
                     <a href="#" class="btn btn-outline-primary btn-sm" id="downloadButton"
                         style="margin-right: 5px; margin-bottom: 5px; border-radius: 5px;">
@@ -112,15 +115,12 @@
             </div>
             <div class="modal-body" style="overflow-y: auto; height: calc(100vh - 50px);">
                 <pre id="fileContent" style="height: 100%; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; background-color: #f5f5f5; padding: 20px; border-radius: 5px; border: 1px solid #ccc;"></pre>
-
             </div>
         </div>
     </div>
 </div>
 
 <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
-
-
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -149,48 +149,6 @@
     function hideLoading() {
         document.getElementById("loading").style.display = "none";
     }
-
-    function checkUVL(file_id) {
-    const outputDiv = document.getElementById('check_' + file_id);
-    outputDiv.innerHTML = ''; // Clear previous output
-
-    fetch(`/flamapy/check_uvl/${file_id}`)
-        .then(response => {
-            return response.json().then(data => ({
-                status: response.status,
-                data
-            }));
-        })
-        .then(({ status, data }) => {
-            if (status === 400) {
-                // Display errors
-                if (data.errors) {
-                    outputDiv.innerHTML = '<span class="badge badge-danger">Errors:</span>';
-                    data.errors.forEach(error => {
-                        const errorElement = document.createElement('span');
-                        errorElement.className = 'badge badge-danger';
-                        errorElement.textContent = error;
-                        outputDiv.appendChild(errorElement);
-                        outputDiv.appendChild(document.createElement('br')); // Line break for better readability
-                    });
-                } else {
-                    outputDiv.innerHTML = `<span class="badge badge-danger">Error: ${data.error}</span>`;
-                }
-            } else if (status === 200) {
-                // Display success message
-                outputDiv.innerHTML = '<span class="badge badge-success">Valid Model</span>';
-            } else {
-                // Handle unexpected status
-                outputDiv.innerHTML = `<span class="badge badge-warning">Unexpected response status: ${status}</span>`;
-            }
-        })
-        .catch(error => {
-            // Handle fetch errors
-            outputDiv.innerHTML = `<span class="badge badge-danger">An unexpected error occurred: ${error.message}</span>`;
-        });
-}
-
-
 
     function copyToClipboard() {
         const text = document.getElementById('fileContent').textContent;
