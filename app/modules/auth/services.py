@@ -103,9 +103,6 @@ class AuthenticationService(BaseService):
         return None
 
     def temp_folder_by_user(self, user: User) -> str:
-<<<<<<< HEAD
-        return os.path.join(uploads_folder_name(), "temp", str(user.id))
-=======
         return os.path.join(uploads_folder_name(), "temp", str(user.id))
     
     def update_user(self, user):
@@ -181,4 +178,3 @@ def send_password_reset_email(user):
             exc_info=True 
         )
         return False
->>>>>>> 7f63e3d99669b53eae556f9c68d22e9f1ffe747a
