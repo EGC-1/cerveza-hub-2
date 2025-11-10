@@ -28,6 +28,24 @@ def edit_profile():
     return render_template("profile/edit.html", form=form)
 
 
+@profile_bp.route("/profile/manage_account", methods=["GET", "POST"])
+@login_required
+def manage_account():
+    auth_service = AuthenticationService()
+    profile = auth_service.get_authenticated_user_profile
+    if not profile:
+        return redirect(url_for("public.index"))
+
+    form = UserProfileForm()
+    
+    if request.method == "POST":
+        service = UserProfileService()
+        result, errors = service.update_profile(profile.id, form)
+        return service.handle_service_response(
+            result, errors, "profile.edit_profile", "Profile updated successfully", "profile/edit.html", form
+        )
+    return render_template("profile/manage_account.html", form=form)
+
 @profile_bp.route("/profile/summary")
 @login_required
 def my_profile():
