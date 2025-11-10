@@ -20,6 +20,7 @@ function send_query() {
                 csrf_token: csrfToken,
                 query: document.querySelector('#query').value,
                 publication_type: document.querySelector('#publication_type').value,
+                community_id: document.querySelector('#community_id').value,
                 sorting: document.querySelector('[name="sorting"]:checked').value,
             };
 
@@ -158,6 +159,8 @@ function set_publication_type_as_query(publicationType) {
     publicationTypeSelect.dispatchEvent(new Event('input', {bubbles: true}));
 }
 
+
+
 document.getElementById('clear-filters').addEventListener('click', clearFilters);
 
 function clearFilters() {
@@ -171,6 +174,8 @@ function clearFilters() {
     let publicationTypeSelect = document.querySelector('#publication_type');
     publicationTypeSelect.value = "any"; // replace "any" with whatever your default value is
     // publicationTypeSelect.dispatchEvent(new Event('input', {bubbles: true}));
+    let communitySelect = document.querySelector('#community_id');
+    communitySelect.value = "";
 
     // Reset the sorting option
     let sortingOptions = document.querySelectorAll('[name="sorting"]');

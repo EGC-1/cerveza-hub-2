@@ -1,10 +1,16 @@
 from flask_wtf import FlaskForm
-from wtforms import FieldList, FormField, SelectField, StringField, SubmitField, TextAreaField
-from wtforms.validators import URL, DataRequired, Optional
+from wtforms import FieldList, FormField, SelectField, StringField, ValidationError, SelectMultipleField, SubmitField, TextAreaField
+from wtforms.validators import URL, DataRequired, Optional, Length
+from flask_wtf.file import FileField, FileAllowed
+from app.modules.dataset.models import PublicationType, DataSet, Community
 
-from app.modules.dataset.models import PublicationType
+class CommunityDatasetForm(FlaskForm):
 
-
+    datasets = SelectMultipleField(
+        label='Datasets Disponibles',
+        description="Mantén presionada Ctrl/Cmd para seleccionar múltiples datasets."
+    )
+    submit = SubmitField('Guardar Datasets')
 class AuthorForm(FlaskForm):
     name = StringField("Name", validators=[DataRequired()])
     affiliation = StringField("Affiliation")
@@ -21,7 +27,31 @@ class AuthorForm(FlaskForm):
             "orcid": self.orcid.data,
         }
 
-
+class CommunityForm(FlaskForm):
+    name = StringField(
+        "Nombre de la Comunidad", 
+        validators=[DataRequired(message="El nombre es obligatorio."), Length(min=5, max=120)]
+    )
+    description = TextAreaField(
+        "Descripción", 
+        validators=[DataRequired(message="La descripción es obligatoria.")]
+    )
+    logo = FileField(
+        "Logo de la Comunidad", 
+        validators=[FileAllowed(['jpg', 'png', 'jpeg'], 'Solo se permiten imágenes JPG, JPEG o PNG!')] 
+    )
+    submit = SubmitField("Crear Comunidad")
+    
+    def get_community_data(self):
+        """Retorna los datos de texto del formulario."""
+        return {
+            "name": self.name.data,
+            "description": self.description.data,
+        }
+    def validate_name(self, name):
+        if Community.query.filter_by(name=name.data).first():
+            raise ValidationError('Ya existe una comunidad con este nombre. Por favor, elige otro.')
+        
 class FeatureModelForm(FlaskForm):
     uvl_filename = StringField("UVL Filename", validators=[DataRequired()])
     title = StringField("Title", validators=[Optional()])

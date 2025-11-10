@@ -85,6 +85,19 @@
                             </div>
 
                         </div>
+                        <div class="col-lg-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="community_id">Filter by Community</label>
+                                <select class="form-control" id="community_id" name="community_id">
+                                    <option value="">Any Community</option>
+                                    {% for community in communities %}
+                                        <option value="{{ community.id }}">
+                                            {{ community.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
 
                     </div>
 

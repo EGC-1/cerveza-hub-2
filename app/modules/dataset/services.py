@@ -8,7 +8,7 @@ from typing import Optional
 from flask import request
 
 from app.modules.auth.services import AuthenticationService
-from app.modules.dataset.models import DataSet, DSMetaData, DSViewRecord
+from app.modules.dataset.models import DataSet, DSMetaData, DSViewRecord, Community
 from app.modules.dataset.repositories import (
     AuthorRepository,
     DataSetRepository,
@@ -16,6 +16,7 @@ from app.modules.dataset.repositories import (
     DSDownloadRecordRepository,
     DSMetaDataRepository,
     DSViewRecordRepository,
+    CommunityRepository,
 )
 from app.modules.featuremodel.repositories import FeatureModelRepository, FMMetaDataRepository
 from app.modules.hubfile.repositories import (
@@ -24,10 +25,53 @@ from app.modules.hubfile.repositories import (
     HubfileViewRecordRepository,
 )
 from core.services.BaseService import BaseService
+from werkzeug.utils import secure_filename
 
 logger = logging.getLogger(__name__)
 
+class CommunityService(BaseService):
+    def __init__(self):
+        super().__init__(CommunityRepository())
 
+    def create_from_form(self, form, current_user, logo_file) -> Community:
+        
+        community = self.repository.create(
+            commit=False, 
+            creator_user_id=current_user.id, 
+            **form.get_community_data()
+        )
+        
+        self.repository.session.add(community)
+        self.repository.session.flush() 
+
+
+        if logo_file and logo_file.filename != '':
+            working_dir = os.getenv("WORKING_DIR", os.path.join(os.getcwd(), "tmp_uploads")) 
+            
+            original_filename = secure_filename(logo_file.filename)
+
+            filename_extension = os.path.splitext(original_filename)[1] 
+            logo_filename = f"{community.id}_{original_filename}" 
+
+ 
+            logo_dest_dir = os.path.join(working_dir, "community_logos", str(community.id))
+            os.makedirs(logo_dest_dir, exist_ok=True)
+            
+            logo_path = os.path.join(logo_dest_dir, logo_filename) 
+            logo_file.save(logo_path)
+            community.logo_path = logo_path 
+            
+        self.repository.session.commit()
+        logger.info(f"Comunidad '{community.name}' creada por usuario {current_user.id}.")
+        return community
+    def get_all_communities(self):
+        return self.repository.get_all_ordered_by_creation()
+    
+    def update_datasets(self, community_id, new_datasets):
+        community = self.get_or_404(community_id)
+        community.datasets = new_datasets 
+        self.repository.session.commit()
+    
 def calculate_checksum_and_size(file_path):
     file_size = os.path.getsize(file_path)
     with open(file_path, "rb") as file:
