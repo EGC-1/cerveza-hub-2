@@ -17,6 +17,8 @@ set -e
 
 # Install Rosemary
 pip install -e ./
+pip install -r /app/requirements.txt
+
 
 # Wait for the database to be ready by running a script
 sh ./scripts/wait-for-db.sh
