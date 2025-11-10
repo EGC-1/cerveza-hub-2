@@ -1,0 +1,97 @@
+{% extends "base_template.html" %}
+
+{% block title %}
+      Gestión de Usuarios - Admin
+{% endblock %}
+
+{% block content %}
+
+      <div class="container mt-5">
+            <h1>Gestión de Usuarios y Roles</h1>
+            <hr>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                        <div class="flashes mb-3">
+                              {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                              {% endfor %}
+                        </div>
+                  {% endif %}
+            {% endwith %}
+
+            {% if form and user_to_edit %}
+            
+                  <div class="card mb-4 shadow-sm border-primary">
+                        <div class="card-header bg-primary text-white">
+                              <h5>Editando Usuario: **{{ user_to_edit.email }}** (ID: {{ user_to_edit.id }})</h5>
+                        </div>
+                        <div class="card-body">
+                              
+                              <form method="POST" action="{{ url_for('admin.edit_user', user_id=user_to_edit.id) }}">
+                                    {{ form.hidden_tag() }} 
+                        <div class="form-group mb-3">
+                                          {{ form.email.label(class="form-label") }}
+                                          {{ form.email(class="form-control") }}
+                                          {% for error in form.email.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                          {% endfor %}
+                                    </div>
+
+                                    <div class="form-group mb-4">
+                                          {{ form.roles.label(class="form-label") }}
+                                          {{ form.roles(class="form-select", multiple="multiple", size="4") }} 
+                                          <small class="form-text text-muted">Selecciona **un solo rol** para el usuario. (Tu base de datos solo soporta un rol por usuario).</small>
+                                          {% for error in form.roles.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                          {% endfor %}
+                                    </div>
+
+                                    <div class="d-flex justify-content-between">
+                                          {{ form.submit(class="btn btn-success") }}
+                                          <a href="{{ url_for('admin.admin_index') }}" class="btn btn-secondary">Cancelar y Volver</a>
+                                    </div>
+                              </form>
+                        </div>
+                  </div>
+
+                  <hr>
+            {% endif %}
+
+
+            <h2>Lista de Usuarios del Sistema</h2>
+            
+            <div class="table-responsive">
+                  <table class="table table-striped table-hover">
+                        <thead>
+                              <tr>
+                                    <th>ID</th>
+                                    <th>Email</th>
+                                    <th>Roles Actuales</th>
+                                    <th>Acciones</th>
+                              </tr>
+                        </thead>
+                        <tbody>
+                              {% for user in users %}
+                              <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                          {% if user.role %} 
+                                                <span class="badge bg-info text-dark me-1">{{ user.role.name | capitalize }}</span>
+                                          {% endif %} 
+                                    </td>
+                                    <td>
+                                          <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                Editar Roles
+                                          </a>
+                                    </td>
+                              </tr>
+                              {% endfor %}
+                        </tbody>
+                  </table>
+            </div>
+      </div>
+
+{% endblock %}

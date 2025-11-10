@@ -11,10 +11,8 @@ from core.managers.error_handler_manager import ErrorHandlerManager
 from core.managers.logging_manager import LoggingManager
 from core.managers.module_manager import ModuleManager
 
-# Load environment variables
 load_dotenv()
 
-# Create the instances
 db = SQLAlchemy()
 migrate = Migrate()
 
@@ -22,19 +20,15 @@ migrate = Migrate()
 def create_app(config_name="development"):
     app = Flask(__name__)
 
-    # Load configuration according to environment
     config_manager = ConfigManager(app)
     config_manager.load_config(config_name=config_name)
 
-    # Initialize SQLAlchemy and Migrate with the app
     db.init_app(app)
     migrate.init_app(app, db)
 
-    # Register modules
     module_manager = ModuleManager(app)
     module_manager.register_modules()
 
-    # Register login manager
     from flask_login import LoginManager
 
     login_manager = LoginManager()
@@ -47,15 +41,12 @@ def create_app(config_name="development"):
 
         return User.query.get(int(user_id))
 
-    # Set up logging
     logging_manager = LoggingManager(app)
     logging_manager.setup_logging()
 
-    # Initialize error handler manager
     error_handler_manager = ErrorHandlerManager(app)
     error_handler_manager.register_error_handlers()
 
-    # Injecting environment variables into jinja context
     @app.context_processor
     def inject_vars_into_jinja():
         return {
@@ -64,6 +55,19 @@ def create_app(config_name="development"):
             "DOMAIN": os.getenv("DOMAIN", "localhost"),
             "APP_VERSION": get_app_version(),
         }
+
+    try:
+        from app.modules.admin.routes import is_admin 
+
+        @app.context_processor
+        def inject_admin_status():
+            return dict(is_admin=is_admin)
+            
+    except ImportError as e:
+        app.logger.warning(f"Could not import is_admin: {e}. Injecting fallback.")
+        @app.context_processor
+        def inject_admin_status_fallback():
+            return dict(is_admin=lambda: False)
 
     return app
 
