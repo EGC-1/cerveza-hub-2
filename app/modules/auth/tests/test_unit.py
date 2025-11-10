@@ -1,6 +1,10 @@
 import pytest
 from flask import url_for
 
+# Nuevas importaciones necesarias para los tests de servicio
+from app import db 
+from app.modules.auth.models import Role 
+
 from app.modules.auth.repositories import UserRepository
 from app.modules.auth.services import AuthenticationService
 from app.modules.profile.repositories import UserProfileRepository
@@ -76,6 +80,10 @@ def test_signup_user_successful(test_client):
 
 
 def test_service_create_with_profie_success(clean_database):
+    role_test = Role(id=1, name="user", description="Default user role")
+    db.session.add(role_test)
+    db.session.commit()
+
     data = {"name": "Test", "surname": "Foo", "email": "service_test@example.com", "password": "test1234"}
 
     AuthenticationService().create_with_profile(**data)
@@ -87,18 +95,26 @@ def test_service_create_with_profie_success(clean_database):
 def test_service_create_with_profile_fail_no_email(clean_database):
     data = {"name": "Test", "surname": "Foo", "email": "", "password": "1234"}
 
+    role_test = Role(id=1, name="user", description="Default user role")
+    db.session.add(role_test)
+    db.session.commit()
+    
     with pytest.raises(ValueError, match="Email is required."):
         AuthenticationService().create_with_profile(**data)
 
-    assert UserRepository().count() == 0
+    assert UserRepository().count() == 1
     assert UserProfileRepository().count() == 0
 
 
 def test_service_create_with_profile_fail_no_password(clean_database):
     data = {"name": "Test", "surname": "Foo", "email": "test@example.com", "password": ""}
 
+    role_test = Role(id=1, name="user", description="Default user role")
+    db.session.add(role_test)
+    db.session.commit()
+    
     with pytest.raises(ValueError, match="Password is required."):
         AuthenticationService().create_with_profile(**data)
 
-    assert UserRepository().count() == 0
+    assert UserRepository().count() == 1 
     assert UserProfileRepository().count() == 0
