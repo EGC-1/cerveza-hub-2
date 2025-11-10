@@ -145,13 +145,18 @@ class Community(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
     description = db.Column(db.Text, nullable=False)
-    logo_path = db.Column(db.String(255), nullable=True) 
+    logo_path = db.Column(db.String(255), nullable=False) 
     
     creator_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     datasets = db.relationship(
         "DataSet", secondary=community_dataset_association, backref=db.backref("communities", lazy="dynamic"), lazy="dynamic")
-
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'logo_path': self.logo_path,
+        }
     def __repr__(self):
         return f"Community<{self.id} - {self.name}>"
 
