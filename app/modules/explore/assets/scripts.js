@@ -168,20 +168,21 @@ function clearFilters() {
     // Reset the search query
     let queryInput = document.querySelector('#query');
     queryInput.value = "";
-    // queryInput.dispatchEvent(new Event('input', {bubbles: true}));
 
     // Reset the publication type to its default value
     let publicationTypeSelect = document.querySelector('#publication_type');
     publicationTypeSelect.value = "any"; // replace "any" with whatever your default value is
-    // publicationTypeSelect.dispatchEvent(new Event('input', {bubbles: true}));
+    
+    // Reset the community filter
     let communitySelect = document.querySelector('#community_id');
     communitySelect.value = "";
+    // Note: If Select2 has been initialized, resetting the value should be enough.
+    // The forced 'input' event below will trigger the search.
 
     // Reset the sorting option
     let sortingOptions = document.querySelectorAll('[name="sorting"]');
     sortingOptions.forEach(option => {
         option.checked = option.value == "newest"; // replace "default" with whatever your default value is
-        // option.dispatchEvent(new Event('input', {bubbles: true}));
     });
 
     // Perform a new search with the reset filters
@@ -207,4 +208,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const queryInput = document.getElementById('query');
         queryInput.dispatchEvent(new Event('input', {bubbles: true}));
     }
+});
+
+function formatCommunity(community) {
+    if (!community.id) {
+        return community.text; 
+    }
+    var logoUrl = $(community.element).data('logo-url');
+    
+    if (logoUrl) {
+        var $community = $(
+            '<span><img src="' + logoUrl + '" style="height: 20px; width: 20px; vertical-align: middle; margin-right: 8px;" /> ' + community.text + '</span>'
+        );
+        return $community;
+    }
+    
+    return community.text;
+}
+
+$(document).ready(function() {
+    $('.community-select').select2({
+        templateResult: formatCommunity,
+        templateSelection: formatCommunity,
+        escapeMarkup: function(m) { return m; } 
+    });
+    $('#community_id').on('change', function() {
+
+        let communitySelect = document.querySelector('#community_id');
+        communitySelect.dispatchEvent(new Event('input', {bubbles: true}));
+        console.log("Select2 change event triggered 'input' for filtering.");
+    });
+
+
 });

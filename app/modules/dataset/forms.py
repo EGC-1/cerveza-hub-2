@@ -38,7 +38,8 @@ class CommunityForm(FlaskForm):
     )
     logo = FileField(
         "Logo de la Comunidad", 
-        validators=[FileAllowed(['jpg', 'png', 'jpeg'], 'Solo se permiten imágenes JPG, JPEG o PNG!')] 
+        validators=[DataRequired(message='El logo es obligatorio.'),
+                    FileAllowed(['jpg', 'png', 'jpeg'], 'Solo se permiten imágenes JPG, JPEG o PNG!')] 
     )
     submit = SubmitField("Crear Comunidad")
     
