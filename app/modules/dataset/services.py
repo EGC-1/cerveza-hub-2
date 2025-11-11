@@ -34,36 +34,40 @@ class CommunityService(BaseService):
         super().__init__(CommunityRepository())
 
     def create_from_form(self, form, current_user, logo_file) -> Community:
-        
-        community = self.repository.create(
-            commit=False, 
-            creator_user_id=current_user.id, 
-            **form.get_community_data()
-        )
-        
-        self.repository.session.add(community)
-        self.repository.session.flush() 
-
-
-        if logo_file and logo_file.filename != '':
-            working_dir = os.getenv("WORKING_DIR", os.path.join(os.getcwd(), "tmp_uploads")) 
+        try:
+            community = self.repository.create(
+                commit=False, 
+                creator_user_id=current_user.id, 
+                **form.get_community_data()
+            )
             
-            original_filename = secure_filename(logo_file.filename)
+            self.repository.session.add(community)
+            self.repository.session.flush() 
 
-            filename_extension = os.path.splitext(original_filename)[1] 
-            logo_filename = f"{community.id}_{original_filename}" 
 
- 
-            logo_dest_dir = os.path.join(working_dir, "community_logos", str(community.id))
-            os.makedirs(logo_dest_dir, exist_ok=True)
-            
-            logo_path = os.path.join(logo_dest_dir, logo_filename) 
-            logo_file.save(logo_path)
-            community.logo_path = logo_path 
-            
-        self.repository.session.commit()
-        logger.info(f"Comunidad '{community.name}' creada por usuario {current_user.id}.")
-        return community
+            if logo_file and logo_file.filename != '':
+                working_dir = os.getenv("WORKING_DIR", os.path.join(os.getcwd(), "tmp_uploads")) 
+                
+                original_filename = secure_filename(logo_file.filename)
+
+                filename_extension = os.path.splitext(original_filename)[1] 
+                logo_filename = f"{community.id}_{original_filename}" 
+
+    
+                logo_dest_dir = os.path.join(working_dir, "community_logos", str(community.id))
+                os.makedirs(logo_dest_dir, exist_ok=True)
+                
+                logo_path = os.path.join(logo_dest_dir, logo_filename) 
+                logo_file.save(logo_path)
+                community.logo_path = logo_path 
+                
+            self.repository.session.commit()
+            logger.info(f"Comunidad '{community.name}' creada por usuario {current_user.id}.")
+            return community
+        except Exception as exc:
+            self.repository.session.rollback()
+            logger.exception(f"Error al crear la comunidad: {exc}")
+            raise exc
     def get_all_communities(self):
         return self.repository.get_all_ordered_by_creation()
     

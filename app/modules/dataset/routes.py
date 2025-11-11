@@ -335,36 +335,36 @@ def get_unsynchronized_dataset(dataset_id):
 @login_required
 def create_community():
     form = CommunityForm()
+    
     if form.validate_on_submit():
-
         logo_file = request.files.get("logo")
-        if logo_file and logo_file.filename != '':
-            try:
-                if not form.logo.validate(form, extra_validators=form.logo.validators):
-                    if not form.logo.errors:
-                        form.logo.errors.append("Tipo de archivo de logo no permitido.")
-                    pass 
-
-            except Exception:
-                form.logo.errors.append("Error al procesar el archivo de logo.")
-                pass
-                
-        else:
-            logo_file = None 
-        if not form.errors:
+        
+        logo_valid = True
+        
+        # 1. Validación de LOGO: Comprobamos si el archivo está presente
+        if not (logo_file and logo_file.filename != ''):
+            form.logo.errors.append("El logo de la comunidad es obligatorio.")
+            logo_valid = False 
+        
+        # 2. Solo si no hay errores en el formulario ni en el logo, procedemos
+        if not form.errors and logo_valid:
             try:
                 community = community_service.create_from_form(
                     form=form, 
                     current_user=current_user, 
                     logo_file=logo_file
                 )
+                flash(f"Comunidad '{community.name}' creada exitosamente.", "success")
                 return redirect(url_for('dataset.view_community', community_id=community.id))
 
             except Exception as exc:
+                # Capturamos cualquier error de DB/disco que pudiera haberse colado
                 logger.exception(f"Excepción al crear la comunidad: {exc}")
-                form.name.errors.append("Ya existe una comunidad con este nombre. Por favor, elige otro.")
+                # Mensaje genérico para el usuario
+                flash("Error al crear la comunidad. Revisa los datos e intenta de nuevo.", 'danger')
+                
+    # Si la validación falló (logo_valid=False o form.errors), se llega aquí y se re-renderiza el form.
     return render_template("community/create_community.html", form=form)
-
 
 @dataset_bp.route("/community/<int:community_id>/", methods=["GET"])
 def view_community(community_id):

@@ -1,6 +1,6 @@
-2025-11-11 16:28:12,048 - app.modules.dataset.routes - ERROR - Excepción al crear la comunidad (después de validación del logo): (pymysql.err.IntegrityError) (1048, "Column 'logo_path' cannot be null")
+2025-11-11 16:25:08,467 - app.modules.dataset.routes - ERROR - Excepción al crear la comunidad: (pymysql.err.IntegrityError) (1048, "Column 'logo_path' cannot be null")
 [SQL: INSERT INTO community (name, description, logo_path, creator_user_id, created_at) VALUES (%(name)s, %(description)s, %(logo_path)s, %(creator_user_id)s, %(created_at)s)]
-[parameters: {'name': 'bsfrbb', 'description': 'sxfdbe d<', 'logo_path': None, 'creator_user_id': 3, 'created_at': datetime.datetime(2025, 11, 11, 16, 28, 12, 46429)}]
+[parameters: {'name': 'bsfrbb', 'description': 'sxfdbe d<', 'logo_path': None, 'creator_user_id': 3, 'created_at': datetime.datetime(2025, 11, 11, 16, 25, 8, 462273)}]
 (Background on this error at: https://sqlalche.me/e/20/gkpj)
 Traceback (most recent call last):
   File "/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1961, in _exec_single_context
@@ -31,7 +31,7 @@ pymysql.err.IntegrityError: (1048, "Column 'logo_path' cannot be null")
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/app/app/modules/dataset/routes.py", line 357, in create_community
+  File "/app/app/modules/dataset/routes.py", line 356, in create_community
     community = community_service.create_from_form(
                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/app/app/modules/dataset/services.py", line 38, in create_from_form
@@ -101,5 +101,5 @@ Traceback (most recent call last):
     raise errorclass(errno, errval)
 sqlalchemy.exc.IntegrityError: (pymysql.err.IntegrityError) (1048, "Column 'logo_path' cannot be null")
 [SQL: INSERT INTO community (name, description, logo_path, creator_user_id, created_at) VALUES (%(name)s, %(description)s, %(logo_path)s, %(creator_user_id)s, %(created_at)s)]
-[parameters: {'name': 'bsfrbb', 'description': 'sxfdbe d<', 'logo_path': None, 'creator_user_id': 3, 'created_at': datetime.datetime(2025, 11, 11, 16, 28, 12, 46429)}]
+[parameters: {'name': 'bsfrbb', 'description': 'sxfdbe d<', 'logo_path': None, 'creator_user_id': 3, 'created_at': datetime.datetime(2025, 11, 11, 16, 25, 8, 462273)}]
 (Background on this error at: https://sqlalche.me/e/20/gkpj)
