@@ -1,124 +1,142 @@
 import os
 import shutil
+import logging
 from datetime import datetime, timezone
-
 from dotenv import load_dotenv
 
 from app.modules.auth.models import User
-from app.modules.dataset.models import Author, DataSet, DSMetaData, DSMetrics, PublicationType
-from app.modules.featuremodel.models import FeatureModel, FMMetaData
-from app.modules.hubfile.models import Hubfile
+from app.modules.dataset.models import Author, DataSet, DSMetaData, PublicationType
+# --- CORREGIDO ---
+# Eliminadas las importaciones de DSMetrics, FeatureModel, FMMetaData, Hubfile
 from core.seeders.BaseSeeder import BaseSeeder
+
+# Configurar un logger simple
+logger = logging.getLogger(__name__)
+
+# --- Contenido de nuestro CSV de Cervezas de prueba ---
+DUMMY_CSV_CONTENT = """brand,type,abv,country
+Estrella Galicia,Lager,5.5,Spain
+Mahou Cinco Estrellas,Lager,5.5,Spain
+Cruzcampo,Pilsner,4.8,Spain
+Voll-Damm,Märzen,7.2,Spain
+"""
+DUMMY_CSV_FILENAME = "spanish_beers.csv"
+DUMMY_ROW_COUNT = 4
+DUMMY_COLUMN_NAMES = "brand,type,abv,country"
 
 
 class DataSetSeeder(BaseSeeder):
 
-    priority = 2  # Lower priority
+    priority = 2
 
     def run(self):
-        # Retrieve users
+        logger.info("Iniciando Seeder de DataSet para CervezaCsvHub...")
+        
+        # 1. Recuperar usuarios
         user1 = User.query.filter_by(email="user1@example.com").first()
         user2 = User.query.filter_by(email="user2@example.com").first()
 
         if not user1 or not user2:
+            logger.error("Usuarios no encontrados. Por favor, ejecuta el UserSeeder primero.")
             raise Exception("Users not found. Please seed users first.")
 
-        # Create DSMetrics instance
-        ds_metrics = DSMetrics(number_of_models="5", number_of_features="50")
-        seeded_ds_metrics = self.seed([ds_metrics])[0]
+        # --- 2. ELIMINADO DSMetrics ---
+        # (Ya no es necesario)
 
-        # Create DSMetaData instances
+        # 3. Crear DSMetaData (sin métricas de UVL)
         ds_meta_data_list = [
             DSMetaData(
-                deposition_id=1 + i,
-                title=f"Sample dataset {i+1}",
-                description=f"Description for dataset {i+1}",
-                publication_type=PublicationType.DATA_MANAGEMENT_PLAN,
-                publication_doi=f"10.1234/dataset{i+1}",
-                dataset_doi=f"10.1234/dataset{i+1}",
-                tags="tag1, tag2",
-                ds_metrics_id=seeded_ds_metrics.id,
-            )
-            for i in range(4)
+                deposition_id=12345,
+                title="Spanish Beers Sample",
+                description="Un conjunto de datos CSV de cervezas populares de España.",
+                publication_type=PublicationType.NONE,
+                publication_doi="10.1234/cerveza.1",
+                dataset_doi="10.5281/zenodo.12345", # DOI de ejemplo
+                tags="cerveza, españa, lager",
+                # ds_metrics_id eliminado
+            ),
+            DSMetaData(
+                deposition_id=67890,
+                title="Local Test Dataset",
+                description="Un dataset local sin sincronizar con Zenodo.",
+                publication_type=PublicationType.NONE,
+                publication_doi=None,
+                dataset_doi=None, # Sin DOI
+                tags="test, local",
+            ),
         ]
         seeded_ds_meta_data = self.seed(ds_meta_data_list)
 
-        # Create Author instances and associate with DSMetaData
+        # 4. Crear Autores
         authors = [
             Author(
-                name=f"Author {i+1}",
-                affiliation=f"Affiliation {i+1}",
-                orcid=f"0000-0000-0000-000{i}",
-                ds_meta_data_id=seeded_ds_meta_data[i % 4].id,
+                name="Lidia Cervezas",
+                affiliation="Universidad de CervezaHub",
+                orcid="0000-0000-0000-0001",
+                ds_meta_data_id=seeded_ds_meta_data[0].id,
+            ),
+             Author(
+                name="Admin User",
+                affiliation="Local Testing",
+                orcid="0000-0000-0000-0002",
+                ds_meta_data_id=seeded_ds_meta_data[1].id,
             )
-            for i in range(4)
         ]
         self.seed(authors)
 
-        # Create DataSet instances
+        # 5. Crear DataSet (con los nuevos campos CSV)
         datasets = [
             DataSet(
-                user_id=user1.id if i % 2 == 0 else user2.id,
-                ds_meta_data_id=seeded_ds_meta_data[i].id,
+                user_id=user1.id,
+                ds_meta_data_id=seeded_ds_meta_data[0].id,
                 created_at=datetime.now(timezone.utc),
+                download_count=42, # Poner datos de ejemplo
+                total_views=100, 
+                # --- Campos CSV ---
+                row_count=DUMMY_ROW_COUNT,
+                column_names=DUMMY_COLUMN_NAMES,
+                csv_file_path=None # Se rellenará después
+            ),
+            DataSet(
+                user_id=user2.id,
+                ds_meta_data_id=seeded_ds_meta_data[1].id,
+                created_at=datetime.now(timezone.utc),
+                download_count=5,
+                total_views=48,
+                # --- Campos CSV ---
+                row_count=DUMMY_ROW_COUNT,
+                column_names=DUMMY_COLUMN_NAMES,
+                csv_file_path=None # Se rellenará después
             )
-            for i in range(4)
         ]
         seeded_datasets = self.seed(datasets)
 
-        # Assume there are 12 UVL files, create corresponding FMMetaData and FeatureModel
-        fm_meta_data_list = [
-            FMMetaData(
-                uvl_filename=f"file{i+1}.uvl",
-                title=f"Feature Model {i+1}",
-                description=f"Description for feature model {i+1}",
-                publication_type=PublicationType.SOFTWARE_DOCUMENTATION,
-                publication_doi=f"10.1234/fm{i+1}",
-                tags="tag1, tag2",
-                uvl_version="1.0",
-            )
-            for i in range(12)
-        ]
-        seeded_fm_meta_data = self.seed(fm_meta_data_list)
-
-        # Create Author instances and associate with FMMetaData
-        fm_authors = [
-            Author(
-                name=f"Author {i+5}",
-                affiliation=f"Affiliation {i+5}",
-                orcid=f"0000-0000-0000-000{i+5}",
-                fm_meta_data_id=seeded_fm_meta_data[i].id,
-            )
-            for i in range(12)
-        ]
-        self.seed(fm_authors)
-
-        feature_models = [
-            FeatureModel(data_set_id=seeded_datasets[i // 3].id, fm_meta_data_id=seeded_fm_meta_data[i].id)
-            for i in range(12)
-        ]
-        seeded_feature_models = self.seed(feature_models)
-
-        # Create files, associate them with FeatureModels and copy files
+        # --- 6. ELIMINADO FeatureModel, FMMetaData, Hubfile ---
+        # (Toda la lógica de UVL ha sido borrada)
+        
+        # --- 7. Crear los archivos .csv FALSOS y actualizar los paths ---
         load_dotenv()
-        working_dir = os.getenv("WORKING_DIR", "")
-        src_folder = os.path.join(working_dir, "app", "modules", "dataset", "uvl_examples")
-        for i in range(12):
-            file_name = f"file{i+1}.uvl"
-            feature_model = seeded_feature_models[i]
-            dataset = next(ds for ds in seeded_datasets if ds.id == feature_model.data_set_id)
-            user_id = dataset.user_id
+        working_dir = os.getenv("WORKING_DIR", os.getcwd())
+        
+        for dataset in seeded_datasets:
+            try:
+                # Crear la carpeta de destino
+                dest_folder = os.path.join(working_dir, "uploads", f"user_{dataset.user_id}", f"dataset_{dataset.id}")
+                os.makedirs(dest_folder, exist_ok=True)
+                
+                # Crear el archivo CSV falso
+                file_path = os.path.join(dest_folder, DUMMY_CSV_FILENAME)
+                with open(file_path, "w") as f:
+                    f.write(DUMMY_CSV_CONTENT)
+                
+                # Actualizar el dataset en la BD con la ruta al archivo
+                dataset.csv_file_path = file_path
+                self.db.session.commit()
+                
+                logger.info(f"Creado archivo CSV de prueba en: {file_path}")
 
-            dest_folder = os.path.join(working_dir, "uploads", f"user_{user_id}", f"dataset_{dataset.id}")
-            os.makedirs(dest_folder, exist_ok=True)
-            shutil.copy(os.path.join(src_folder, file_name), dest_folder)
+            except Exception as e:
+                logger.error(f"Fallo al crear el archivo CSV de prueba para el dataset {dataset.id}: {e}")
+                self.db.session.rollback()
 
-            file_path = os.path.join(dest_folder, file_name)
-
-            uvl_file = Hubfile(
-                name=file_name,
-                checksum=f"checksum{i+1}",
-                size=os.path.getsize(file_path),
-                feature_model_id=feature_model.id,
-            )
-            self.seed([uvl_file])
+        logger.info("DataSetSeeder para CervezaCsvHub completado.")

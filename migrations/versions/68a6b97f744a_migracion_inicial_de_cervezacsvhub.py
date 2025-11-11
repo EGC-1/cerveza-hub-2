@@ -1,8 +1,8 @@
-"""first migration
+"""Migracion inicial de CervezaCsvHub
 
-Revision ID: 001
+Revision ID: 68a6b97f744a
 Revises: 
-Create Date: 2024-09-08 16:50:20.326640
+Create Date: 2025-11-11 08:14:53.222999
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '001'
+revision = '68a6b97f744a'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -24,10 +24,15 @@ def upgrade():
     sa.Column('dataset_doi_new', sa.String(length=120), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('ds_metrics',
+    op.create_table('ds_meta_data',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('number_of_models', sa.String(length=120), nullable=True),
-    sa.Column('number_of_features', sa.String(length=120), nullable=True),
+    sa.Column('deposition_id', sa.Integer(), nullable=True),
+    sa.Column('title', sa.String(length=120), nullable=False),
+    sa.Column('description', sa.Text(), nullable=False),
+    sa.Column('publication_type', sa.Enum('NONE', 'ANNOTATION_COLLECTION', 'BOOK', 'BOOK_SECTION', 'CONFERENCE_PAPER', 'DATA_MANAGEMENT_PLAN', 'JOURNAL_ARTICLE', 'PATENT', 'PREPRINT', 'PROJECT_DELIVERABLE', 'PROJECT_MILESTONE', 'PROPOSAL', 'REPORT', 'SOFTWARE_DOCUMENTATION', 'TAXONOMIC_TREATMENT', 'TECHNICAL_NOTE', 'THESIS', 'WORKING_PAPER', 'OTHER', name='publicationtype'), nullable=False),
+    sa.Column('publication_doi', sa.String(length=120), nullable=True),
+    sa.Column('dataset_doi', sa.String(length=120), nullable=True),
+    sa.Column('tags', sa.String(length=120), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('fm_metrics',
@@ -41,9 +46,14 @@ def upgrade():
     sa.Column('email', sa.String(length=256), nullable=False),
     sa.Column('password', sa.String(length=256), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('reset_token', sa.String(length=128), nullable=True),
+    sa.Column('token_expiration', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')
     )
+    with op.batch_alter_table('user', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_user_reset_token'), ['reset_token'], unique=True)
+
     op.create_table('webhook',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.PrimaryKeyConstraint('id')
@@ -52,17 +62,28 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('ds_meta_data',
+    op.create_table('community',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('deposition_id', sa.Integer(), nullable=True),
-    sa.Column('title', sa.String(length=120), nullable=False),
+    sa.Column('name', sa.String(length=120), nullable=False),
     sa.Column('description', sa.Text(), nullable=False),
-    sa.Column('publication_type', sa.Enum('NONE', 'ANNOTATION_COLLECTION', 'BOOK', 'BOOK_SECTION', 'CONFERENCE_PAPER', 'DATA_MANAGEMENT_PLAN', 'JOURNAL_ARTICLE', 'PATENT', 'PREPRINT', 'PROJECT_DELIVERABLE', 'PROJECT_MILESTONE', 'PROPOSAL', 'REPORT', 'SOFTWARE_DOCUMENTATION', 'TAXONOMIC_TREATMENT', 'TECHNICAL_NOTE', 'THESIS', 'WORKING_PAPER', 'OTHER', name='publicationtype'), nullable=False),
-    sa.Column('publication_doi', sa.String(length=120), nullable=True),
-    sa.Column('dataset_doi', sa.String(length=120), nullable=True),
-    sa.Column('tags', sa.String(length=120), nullable=True),
-    sa.Column('ds_metrics_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['ds_metrics_id'], ['ds_metrics.id'], ),
+    sa.Column('logo_path', sa.String(length=255), nullable=True),
+    sa.Column('creator_user_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['creator_user_id'], ['user.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('name')
+    )
+    op.create_table('data_set',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('ds_meta_data_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('download_count', sa.Integer(), nullable=False),
+    sa.Column('csv_file_path', sa.String(length=500), nullable=True),
+    sa.Column('row_count', sa.Integer(), nullable=True),
+    sa.Column('column_names', sa.Text(), nullable=True),
+    sa.ForeignKeyConstraint(['ds_meta_data_id'], ['ds_meta_data.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('fm_meta_data',
@@ -100,14 +121,13 @@ def upgrade():
     sa.ForeignKeyConstraint(['fm_meta_data_id'], ['fm_meta_data.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('data_set',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('ds_meta_data_id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['ds_meta_data_id'], ['ds_meta_data.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    op.create_table('community_dataset_association',
+    sa.Column('community_id', sa.Integer(), nullable=False),
+    sa.Column('dataset_id', sa.Integer(), nullable=False),
+    sa.Column('added_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['community_id'], ['community.id'], ),
+    sa.ForeignKeyConstraint(['dataset_id'], ['data_set.id'], ),
+    sa.PrimaryKeyConstraint('community_id', 'dataset_id')
     )
     op.create_table('ds_download_record',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -177,15 +197,19 @@ def downgrade():
     op.drop_table('feature_model')
     op.drop_table('ds_view_record')
     op.drop_table('ds_download_record')
-    op.drop_table('data_set')
+    op.drop_table('community_dataset_association')
     op.drop_table('author')
     op.drop_table('user_profile')
     op.drop_table('fm_meta_data')
-    op.drop_table('ds_meta_data')
+    op.drop_table('data_set')
+    op.drop_table('community')
     op.drop_table('zenodo')
     op.drop_table('webhook')
+    with op.batch_alter_table('user', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_user_reset_token'))
+
     op.drop_table('user')
     op.drop_table('fm_metrics')
-    op.drop_table('ds_metrics')
+    op.drop_table('ds_meta_data')
     op.drop_table('doi_mapping')
     # ### end Alembic commands ###

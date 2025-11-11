@@ -50,6 +50,7 @@ ds_view_record_service = DSViewRecordService()
 community_service = CommunityService()
 
 @dataset_bp.route("/dataset/upload", methods=["GET", "POST"])
+@login_required 
 def create_dataset():
     form = DataSetForm()
     
@@ -103,8 +104,8 @@ def create_dataset():
             flash(f"Error al crear el dataset local: {exc}", "danger")
             return render_template("dataset/upload_dataset.html", form=form)
 
-        # send dataset as deposition to Zenodo
         data = {}
+        deposition_doi = None 
         try:
             zenodo_response_json = zenodo_service.create_new_deposition(dataset)
             data = json.loads(json.dumps(zenodo_response_json))
@@ -119,10 +120,9 @@ def create_dataset():
             try:
                 logger.info(f"Subiendo {file_path} a Zenodo...")
                 zenodo_service.upload_file(dataset, deposition_id, file_path, filename)
-
                 zenodo_service.publish_deposition(deposition_id)
 
-                deposition_doi = zenodo_service.get_doi(deposition_id)
+                deposition_doi = zenodo_service.get_doi(deposition_id) 
                 dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=deposition_doi)
                 
                 flash('¡Tu Cerveza-Dataset se ha subido y publicado en Zenodo!', 'success')
@@ -135,7 +135,12 @@ def create_dataset():
         else:
              flash('Dataset creado localmente, pero ha fallado la conexión con Zenodo.', 'warning')
 
-        return redirect(url_for('dataset.dataset_detail', dataset_id=dataset.id)) 
+        if deposition_doi:
+            doi_only = deposition_doi.replace("https://doi.org/", "")
+            return redirect(url_for('dataset.subdomain_index', doi=doi_only))
+        else:
+             # Redirigir a la página (ahora pública) del dataset local
+             return redirect(url_for('dataset.get_unsynchronized_dataset', dataset_id=dataset.id))
         
     return render_template("dataset/upload_dataset.html", form=form)
 
@@ -206,27 +211,24 @@ def delete():
 def download_dataset(dataset_id):
     dataset = dataset_service.get_or_404(dataset_id)
 
-    file_path = f"uploads/user_{dataset.user_id}/dataset_{dataset.id}/"
+    if not dataset.csv_file_path or not os.path.exists(dataset.csv_file_path):
+        flash("Error: No se encontró el archivo CSV para este dataset.", "danger")
+        try:
+            doi_only = dataset.ds_meta_data.dataset_doi.replace("https://doi.org/", "")
+            return redirect(url_for('dataset.subdomain_index', doi=doi_only))
+        except Exception:
+            return redirect(url_for('dataset.list_dataset'))
 
     temp_dir = tempfile.mkdtemp()
     zip_path = os.path.join(temp_dir, f"dataset_{dataset_id}.zip")
 
     with ZipFile(zip_path, "w") as zipf:
-        for subdir, dirs, files in os.walk(file_path):
-            for file in files:
-                full_path = os.path.join(subdir, file)
-
-                relative_path = os.path.relpath(full_path, file_path)
-
-                zipf.write(
-                    full_path,
-                    arcname=os.path.join(os.path.basename(zip_path[:-4]), relative_path),
-                )
+        filename = os.path.basename(dataset.csv_file_path)
+        zipf.write(dataset.csv_file_path, arcname=filename)
 
     user_cookie = request.cookies.get("download_cookie")
     if not user_cookie:
-        user_cookie = str(uuid.uuid4())  # Generate a new unique identifier if it does not exist
-        # Save the cookie to the user's browser
+        user_cookie = str(uuid.uuid4())
         resp = make_response(
             send_from_directory(
                 temp_dir,
@@ -244,7 +246,6 @@ def download_dataset(dataset_id):
             mimetype="application/zip",
         )
 
-    # Check if the download record already exists for this cookie
     existing_record = DSDownloadRecord.query.filter_by(
         user_id=current_user.id if current_user.is_authenticated else None,
         dataset_id=dataset_id,
@@ -252,7 +253,6 @@ def download_dataset(dataset_id):
     ).first()
 
     if not existing_record:
-        # Record the download in your database
         DSDownloadRecordService().create(
             user_id=current_user.id if current_user.is_authenticated else None,
             dataset_id=dataset_id,
@@ -271,22 +271,14 @@ def download_dataset(dataset_id):
 
 @dataset_bp.route("/dataset/<int:dataset_id>/stats", methods=["GET"])
 def get_dataset_stats(dataset_id):
-    """
-    Retrieve the stats for a given dataset, including some "curious" statistics (download rate, age, author count, etc.)
-    """
     dataset = dataset_service.get_or_404(dataset_id)
 
-    # BASIC METRICS
     total_views = DSViewRecord.query.filter_by(dataset_id=dataset_id).count()
     total_downloads = dataset.download_count
     dataset_age_in_days = (datetime.now(timezone.utc).replace(tzinfo=None) - dataset.created_at).days
     authors_number = len(dataset.ds_meta_data.authors)
-
-    # --- MÉTRICAS DE CSV ---
     filas_count = dataset.row_count or 0
     columnas_count = len(dataset.column_names.split(',')) if dataset.column_names else 0
-
-    # POPULAR METRICS
     seven_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
     download_rate = 0
     if total_views > 0:
@@ -301,15 +293,12 @@ def get_dataset_stats(dataset_id):
     return render_template(
         "dataset/statistics.html",
         dataset=dataset,
-        
         total_views=total_views,
         total_downloads=total_downloads,
         dataset_age_in_days=dataset_age_in_days,
         authors_number=authors_number,
-        
         filas_count=filas_count,
         columnas_count=columnas_count,
-        
         download_rate=download_rate,
         views_last_week=views_last_week,
         downloads_last_week=downloads_last_week
@@ -317,7 +306,6 @@ def get_dataset_stats(dataset_id):
 
 @dataset_bp.route("/doi/<path:doi>/", methods=["GET"])
 def subdomain_index(doi):
-
     new_doi = doi_mapping_service.get_new_doi(doi)
     if new_doi:
         return redirect(url_for("dataset.subdomain_index", doi=new_doi), code=302)
@@ -331,7 +319,30 @@ def subdomain_index(doi):
         logger.error(f"No se encontró un DataSet para los metadatos con DOI {doi}")
         abort(404)
 
-    # --- INICIO DE LÓGICA DE VISTA PREVIA ---
+    # --- INICIO DE LA LÓGICA DE VISITAS ---
+    user_cookie = None # Definir fuera del try
+    try:
+        user_cookie = request.cookies.get("view_cookie")
+        if not user_cookie:
+            user_cookie = str(uuid.uuid4())
+        
+        existing_record = DSViewRecord.query.filter_by(
+            user_id=current_user.id if current_user.is_authenticated else None,
+            dataset_id=dataset.id,
+            view_cookie=user_cookie,
+        ).first()
+
+        if not existing_record:
+            ds_view_record_service.create( # Usando el servicio que ya tienes
+                user_id=current_user.id if current_user.is_authenticated else None,
+                dataset_id=dataset.id,
+                view_date=datetime.now(timezone.utc),
+                view_cookie=user_cookie,
+            )
+    except Exception as e:
+        logger.warning(f"No se pudo grabar la visita para el dataset {dataset.id}: {e}")
+    # --- FIN DE LA LÓGICA DE VISITAS ---
+
     csv_header = []
     csv_preview = []
     try:
@@ -342,9 +353,6 @@ def subdomain_index(doi):
     except Exception as e:
         logger.exception(f"No se pudo generar la vista previa del CSV para {dataset.id}: {e}")
         pass 
-    # --- FIN DE LÓGICA DE VISTA PREVIA ---
-
-    user_cookie = ds_view_record_service.create_cookie(dataset=dataset)
     
     resp = make_response(render_template(
         "dataset/view_dataset.html", 
@@ -352,20 +360,50 @@ def subdomain_index(doi):
         csv_header=csv_header,   
         csv_preview=csv_preview   
     ))
-    resp.set_cookie("view_cookie", user_cookie)
+    
+    if user_cookie: # Solo setear la cookie si la creamos/obtuvimos
+        resp.set_cookie("view_cookie", user_cookie) 
 
     return resp
 
 
 @dataset_bp.route("/dataset/unsynchronized/<int:dataset_id>/", methods=["GET"])
-@login_required
 def get_unsynchronized_dataset(dataset_id):
-
-    dataset = dataset_service.get_unsynchronized_dataset(current_user.id, dataset_id)
+    
+    # --- CORRECCIÓN: El servicio de "unsynchronized" también debe buscar por ID, no por user.id
+    dataset = dataset_service.get_or_404(dataset_id)
     if not dataset:
         abort(404)
+        
+    # Pre-comprobación: Si el dataset SÍ tiene DOI, redirigir a la ruta buena
+    if dataset.ds_meta_data.dataset_doi:
+        doi_only = dataset.ds_meta_data.dataset_doi.replace("https://doi.org/", "")
+        return redirect(url_for('dataset.subdomain_index', doi=doi_only), code=301) # Redirigir permanentemente
 
-    # LÓGICA DE VISTA PREVIA
+    # --- INICIO DE LA LÓGICA DE VISITAS ---
+    user_cookie = None # Definir fuera del try
+    try:
+        user_cookie = request.cookies.get("view_cookie")
+        if not user_cookie:
+            user_cookie = str(uuid.uuid4())
+        
+        existing_record = DSViewRecord.query.filter_by(
+            user_id=current_user.id if current_user.is_authenticated else None,
+            dataset_id=dataset.id,
+            view_cookie=user_cookie,
+        ).first()
+
+        if not existing_record:
+            ds_view_record_service.create( # Usando el servicio que ya tienes
+                user_id=current_user.id if current_user.is_authenticated else None,
+                dataset_id=dataset.id,
+                view_date=datetime.now(timezone.utc),
+                view_cookie=user_cookie,
+            )
+    except Exception as e:
+        logger.warning(f"No se pudo grabar la visita para el dataset {dataset.id}: {e}")
+    # --- FIN DE LA LÓGICA DE VISITAS ---
+
     csv_header = []
     csv_preview = []
     try:
@@ -376,14 +414,18 @@ def get_unsynchronized_dataset(dataset_id):
     except Exception as e:
         logger.exception(f"No se pudo generar la vista previa del CSV para {dataset.id}: {e}")
         pass 
-    # FIN LÓGICA DE VISTA PREVIA 
 
-    return render_template(
+    resp = make_response(render_template(
         "dataset/view_dataset.html", 
         dataset=dataset,
-        csv_header=csv_header,    
+        csv_header=csv_header,     
         csv_preview=csv_preview   
-    )
+    ))
+    
+    if user_cookie: # Solo setear la cookie si la creamos/obtuvimos
+        resp.set_cookie("view_cookie", user_cookie)
+    return resp
+
 
 @dataset_bp.route("/community/create", methods=["GET", "POST"])
 @login_required
@@ -472,7 +514,7 @@ def manage_community_datasets(community_id):
             selected_dataset_ids = form.datasets.data 
             selected_datasets = DataSet.query.filter(DataSet.id.in_(selected_dataset_ids)).all()
 
-            community_service.update_datasets(community_id, selected_datasets)
+            community_service.update_datasets(community, selected_datasets)
 
             flash(f"Datasets actualizados para la comunidad '{community.name}'.", 'success')
             return redirect(url_for('dataset.view_community', community_id=community.id))
@@ -487,5 +529,5 @@ def manage_community_datasets(community_id):
         form.datasets.data = current_dataset_ids
     
     return render_template("community/manage_datasets.html", 
-                           community=community, 
-                           form=form)
+                            community=community, 
+                            form=form)
