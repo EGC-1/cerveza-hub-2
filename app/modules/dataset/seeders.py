@@ -6,14 +6,10 @@ from dotenv import load_dotenv
 
 from app.modules.auth.models import User
 from app.modules.dataset.models import Author, DataSet, DSMetaData, PublicationType
-# --- CORREGIDO ---
-# Eliminadas las importaciones de DSMetrics, FeatureModel, FMMetaData, Hubfile
 from core.seeders.BaseSeeder import BaseSeeder
 
-# Configurar un logger simple
 logger = logging.getLogger(__name__)
 
-# --- Contenido de nuestro CSV de Cervezas de prueba ---
 DUMMY_CSV_CONTENT = """brand,type,abv,country
 Estrella Galicia,Lager,5.5,Spain
 Mahou Cinco Estrellas,Lager,5.5,Spain
@@ -40,9 +36,6 @@ class DataSetSeeder(BaseSeeder):
             logger.error("Usuarios no encontrados. Por favor, ejecuta el UserSeeder primero.")
             raise Exception("Users not found. Please seed users first.")
 
-        # --- 2. ELIMINADO DSMetrics ---
-        # (Ya no es necesario)
-
         # 3. Crear DSMetaData (sin métricas de UVL)
         ds_meta_data_list = [
             DSMetaData(
@@ -53,7 +46,7 @@ class DataSetSeeder(BaseSeeder):
                 publication_doi="10.1234/cerveza.1",
                 dataset_doi="10.5281/zenodo.12345", # DOI de ejemplo
                 tags="cerveza, españa, lager",
-                # ds_metrics_id eliminado
+                
             ),
             DSMetaData(
                 deposition_id=67890,
@@ -90,46 +83,39 @@ class DataSetSeeder(BaseSeeder):
                 user_id=user1.id,
                 ds_meta_data_id=seeded_ds_meta_data[0].id,
                 created_at=datetime.now(timezone.utc),
-                download_count=42, # Poner datos de ejemplo
-                total_views=100, 
-                # --- Campos CSV ---
+                download_count=0, 
+            
                 row_count=DUMMY_ROW_COUNT,
                 column_names=DUMMY_COLUMN_NAMES,
-                csv_file_path=None # Se rellenará después
+                csv_file_path=None 
             ),
             DataSet(
                 user_id=user2.id,
                 ds_meta_data_id=seeded_ds_meta_data[1].id,
                 created_at=datetime.now(timezone.utc),
-                download_count=5,
-                total_views=48,
-                # --- Campos CSV ---
+                download_count=0,
+              
                 row_count=DUMMY_ROW_COUNT,
                 column_names=DUMMY_COLUMN_NAMES,
-                csv_file_path=None # Se rellenará después
+                csv_file_path=None 
             )
         ]
         seeded_datasets = self.seed(datasets)
-
-        # --- 6. ELIMINADO FeatureModel, FMMetaData, Hubfile ---
-        # (Toda la lógica de UVL ha sido borrada)
         
-        # --- 7. Crear los archivos .csv FALSOS y actualizar los paths ---
         load_dotenv()
         working_dir = os.getenv("WORKING_DIR", os.getcwd())
         
         for dataset in seeded_datasets:
             try:
-                # Crear la carpeta de destino
+                
                 dest_folder = os.path.join(working_dir, "uploads", f"user_{dataset.user_id}", f"dataset_{dataset.id}")
                 os.makedirs(dest_folder, exist_ok=True)
                 
-                # Crear el archivo CSV falso
                 file_path = os.path.join(dest_folder, DUMMY_CSV_FILENAME)
                 with open(file_path, "w") as f:
                     f.write(DUMMY_CSV_CONTENT)
                 
-                # Actualizar el dataset en la BD con la ruta al archivo
+             
                 dataset.csv_file_path = file_path
                 self.db.session.commit()
                 
