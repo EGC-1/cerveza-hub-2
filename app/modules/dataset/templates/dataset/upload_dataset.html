@@ -85,6 +85,55 @@
                                     {% endfor %}
                                 </div>
                             </div>
+                            
+                            <div class="col-12 mb-3">
+                                <h2 class="h5 mb-2">Permanent storage service</h2>
+                                <p class="text-muted" style="font-size: 0.9rem;">
+                                    Choose the service where the dataset will be permanently stored.
+                                </p>
+
+                                <div class="row">
+                                    <div class="col-md-4 col-12 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input"
+                                                type="radio"
+                                                name="storage_service"
+                                                id="storage_zenodo"
+                                                value="zenodo"
+                                                checked>
+                                            <label class="form-check-label" for="storage_zenodo">
+                                                Zenodo <span class="badge badge-secondary">Default</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4 col-12 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input"
+                                                type="radio"
+                                                name="storage_service"
+                                                id="storage_github"
+                                                value="github">
+                                            <label class="form-check-label" for="storage_github">
+                                                GitHub
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4 col-12 mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input"
+                                                type="radio"
+                                                name="storage_service"
+                                                id="storage_figshare"
+                                                value="figshare">
+                                            <label class="form-check-label" for="storage_figshare">
+                                                Figshare
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div class="col-6">
                                 <div class="mb-3">
@@ -463,10 +512,17 @@
                 <label class="form-check">
                     <input id="agreeCheckbox" class="form-check-input" type="checkbox" value="">
                     <span class="form-check-label" style="font-size: 15px">
-                                I agree to have my feature models automatically uploaded to Zenodo and made available to the public according to the <a
-                            href="https://en.wikipedia.org/wiki/Open_science" target="_blank">Open Science</a> manifesto
-                            </span>
+                        I agree to have my feature models and related metadata uploaded to
+                        <span id="selected_storage_service_label">Zenodo</span>
+                        and made available to the public according to the
+                        <a href="https://about.zenodo.org/policies/"
+                        target="_blank"
+                        id="selected_storage_service_policy_link">
+                            Zenodo policies
+                        </a>.
+                    </span>
                 </label>
+
 
                 <button id="upload_button" class="btn btn-primary mt-2" disabled>
                     <i data-feather="upload" class="center-button-icon"></i>
@@ -529,4 +585,56 @@
 {% block scripts %}
     <script src="{{ url_for('zenodo.scripts') }}"></script>
     <script src="{{ url_for('dataset.scripts') }}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const radios = document.querySelectorAll('input[name="storage_service"]');
+            const labelSpan = document.getElementById('selected_storage_service_label');
+            const link = document.getElementById('selected_storage_service_policy_link');
+
+            const POLICY_DATA = {
+                zenodo: {
+                    label: 'Zenodo',
+                    href: 'https://about.zenodo.org/policies/',
+                    linkText: 'Zenodo policies'
+                },
+                github: {
+                    label: 'GitHub',
+                    href: 'https://docs.github.com/en/site-policy',
+                    linkText: 'GitHub policies'
+                },
+                figshare: {
+                    label: 'Figshare',
+                    href: 'https://figshare.com/policies',
+                    linkText: 'Figshare policies'
+                }
+            };
+
+            function updateStorageServiceUI(value) {
+                const info = POLICY_DATA[value] || POLICY_DATA['zenodo'];
+
+                if (labelSpan) {
+                    labelSpan.textContent = info.label;
+                }
+                if (link) {
+                    link.textContent = info.linkText;
+                    link.href = info.href;
+                }
+            }
+
+            radios.forEach(function (radio) {
+                radio.addEventListener('change', function () {
+                    if (this.checked) {
+                        updateStorageServiceUI(this.value);
+                    }
+                });
+            });
+
+            // Estado inicial (Zenodo por defecto o lo que venga marcado)
+            const checked = Array.from(radios).find(r => r.checked);
+            if (checked) {
+                updateStorageServiceUI(checked.value);
+            }
+        });
+    </script>
 {% endblock %}

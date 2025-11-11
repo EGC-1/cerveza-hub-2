@@ -2,7 +2,7 @@ name: Deploy to Render
 
 on:
   push:
-    branches: [main, trunk]
+    branches: [ trunk ]
   workflow_dispatch:
 
 permissions:
@@ -14,25 +14,20 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy to Render (${{ github.ref_name }})
+    name: Deploy to Render (trunk)
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
 
-      - name: Select Render deploy hook by branch
+      - name: Set Render deploy hook (trunk)
         run: |
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            echo "DEPLOY_HOOK_URL=${{ secrets.RENDER_DEPLOY_HOOK_URL_MAIN }}" >> $GITHUB_ENV
-            echo "Target: Render (main)"
-          elif [ "${GITHUB_REF_NAME}" = "trunk" ]; then
-            echo "DEPLOY_HOOK_URL=${{ secrets.RENDER_DEPLOY_HOOK_URL_TRUNK }}" >> $GITHUB_ENV
-            echo "Target: Render (trunk)"
-          else
-            echo "Branch ${GITHUB_REF_NAME} no configurada para despliegue"
-            exit 78
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL_TRUNK }}" ]; then
+            echo "Falta el secreto RENDER_DEPLOY_HOOK_URL_TRUNK"; exit 1
           fi
+          echo "DEPLOY_HOOK_URL=${{ secrets.RENDER_DEPLOY_HOOK_URL_TRUNK }}" >> $GITHUB_ENV
+          echo "Target: Render (trunk)"
 
       - name: Trigger Render deploy
         run: |

@@ -9,6 +9,8 @@ import secrets
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
 
+    role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=False, default=1)
+    
     email = db.Column(db.String(256), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -16,6 +18,9 @@ class User(db.Model, UserMixin):
     token_expiration = db.Column(db.DateTime, nullable=True)
 
 
+
+    role = db.relationship("Role", backref="users", lazy=True)
+    
     data_sets = db.relationship("DataSet", backref="user", lazy=True)
     profile = db.relationship("UserProfile", backref="user", uselist=False)
 
@@ -78,3 +83,15 @@ class User(db.Model, UserMixin):
             return None
         
         return user
+    
+    
+class Role(db.Model):
+    __tablename__ = 'roles'  
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+    description = db.Column(db.String(255))
+    
+
+    def __repr__(self):
+        return f'<Role {self.name}>'

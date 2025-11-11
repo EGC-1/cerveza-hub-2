@@ -3,8 +3,8 @@ import secrets
 
 from flask_login import current_user, login_user
 
+from app.modules.auth.models import User, Role 
 from app import db 
-from app.modules.auth.models import User
 from app.modules.auth.repositories import UserRepository
 from app.modules.profile.models import UserProfile
 from app.modules.profile.repositories import UserProfileRepository
@@ -16,8 +16,11 @@ from flask_mail import Message
 
 class AuthenticationService(BaseService):
     
+    # CORRECCIÓN: Cambiado de _init_ a __init__ para que Python lo reconozca como constructor.
     def __init__(self):
-        super().__init__(UserRepository())
+        # CORRECCIÓN: Cambiado de _init_ a __init__ en la llamada super().
+        # Aquí inicializamos BaseService pasándole el repositorio obligatorio.
+        super().__init__(repository=UserRepository()) 
         self.user_profile_repository = UserProfileRepository()
 
     def login(self, email, password, remember=True):
@@ -46,7 +49,14 @@ class AuthenticationService(BaseService):
             if not surname:
                 raise ValueError("Surname is required.")
 
-            user_data = {"email": email, "password": password}
+            standard_role = self.repository.session.query(Role).filter_by(name='standard user').first()
+            role_id = standard_role.id if standard_role else 1
+            
+            user_data = {
+                "email": email, 
+                "password": password,
+                "role_id": role_id 
+            }
 
             profile_data = {
                 "name": name,
@@ -68,6 +78,22 @@ class AuthenticationService(BaseService):
             return updated_instance, None
 
         return None, form.errors
+
+    def assign_role_to_user(self, user_id: int, new_role_id: int) -> bool:
+        """Asigna un nuevo role_id a un usuario específico."""
+        try:
+            user = self.repository.get_by_id(user_id) 
+            
+            if user:
+                user.role_id = new_role_id
+                
+                self.repository.update(user, commit=True)
+                return True
+            return False
+        except Exception as exc:
+            self.repository.session.rollback()
+            raise exc
+
 
     def get_authenticated_user(self) -> User | None:
         if current_user.is_authenticated:
