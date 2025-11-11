@@ -340,13 +340,9 @@ def create_community():
         logo_file = request.files.get("logo")
         
         logo_valid = True
-        
-        # 1. Validación de LOGO: Comprobamos si el archivo está presente
         if not (logo_file and logo_file.filename != ''):
             form.logo.errors.append("El logo de la comunidad es obligatorio.")
             logo_valid = False 
-        
-        # 2. Solo si no hay errores en el formulario ni en el logo, procedemos
         if not form.errors and logo_valid:
             try:
                 community = community_service.create_from_form(
@@ -358,12 +354,9 @@ def create_community():
                 return redirect(url_for('dataset.view_community', community_id=community.id))
 
             except Exception as exc:
-                # Capturamos cualquier error de DB/disco que pudiera haberse colado
+               
                 logger.exception(f"Excepción al crear la comunidad: {exc}")
-                # Mensaje genérico para el usuario
                 flash("Error al crear la comunidad. Revisa los datos e intenta de nuevo.", 'danger')
-                
-    # Si la validación falló (logo_valid=False o form.errors), se llega aquí y se re-renderiza el form.
     return render_template("community/create_community.html", form=form)
 
 @dataset_bp.route("/community/<int:community_id>/", methods=["GET"])
