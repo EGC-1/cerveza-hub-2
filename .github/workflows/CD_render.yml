@@ -29,37 +29,34 @@ jobs:
           echo "DEPLOY_HOOK_URL=${{ secrets.RENDER_DEPLOY_HOOK_URL_TRUNK }}" >> $GITHUB_ENV
           echo "Target: Render (trunk)"
 
-      # ✅ Preparar Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'   # o la versión que uses en Render
+          python-version: '3.11'   # o la que uses tú
 
-      # ✅ Instalar dependencias
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ✅ Migraciones + seeders ANTES del deploy
       - name: Run migrations and seed
         env:
-          # Debe apuntar a la misma BBDD que usa Render
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # Ajusta esto a tu entrypoint de Flask
-          FLASK_APP: app.py
+          FLASK_APP: app.py                 # cámbialo si tu entrypoint es otro
           FLASK_ENV: production
+          MARIADB_DATABASE: ${{ secrets.MARIADB_DATABASE }}
+          MARIADB_HOSTNAME: ${{ secrets.MARIADB_HOSTNAME }}
+          MARIADB_PASSWORD: ${{ secrets.MARIADB_PASSWORD }}
+          MARIADB_PORT: ${{ secrets.MARIADB_PORT }}
+          MARIADB_USER: ${{ secrets.MARIADB_USER }}
         run: |
           # Migraciones (Flask-Migrate)
           flask db upgrade
-
-          # Seeders (ajusta al comando que tengas definido)
-          flask seed
+          # Seeder del proyecto
+          rosemary db:seed
 
       - name: Trigger Render deploy
         run: |
           if [ -z "${DEPLOY_HOOK_URL:-}" ]; then
             echo "Falta DEPLOY_HOOK_URL"; exit 1
           fi
-          # Render recomienda POST al deploy hook
           curl -fsS -X POST "$DEPLOY_HOOK_URL"
