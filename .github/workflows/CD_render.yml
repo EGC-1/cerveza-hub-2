@@ -29,6 +29,33 @@ jobs:
           echo "DEPLOY_HOOK_URL=${{ secrets.RENDER_DEPLOY_HOOK_URL_TRUNK }}" >> $GITHUB_ENV
           echo "Target: Render (trunk)"
 
+      # ✅ Preparar Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'   # o la versión que uses en Render
+
+      # ✅ Instalar dependencias
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ✅ Migraciones + seeders ANTES del deploy
+      - name: Run migrations and seed
+        env:
+          # Debe apuntar a la misma BBDD que usa Render
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Ajusta esto a tu entrypoint de Flask
+          FLASK_APP: app.py
+          FLASK_ENV: production
+        run: |
+          # Migraciones (Flask-Migrate)
+          flask db upgrade
+
+          # Seeders (ajusta al comando que tengas definido)
+          flask seed
+
       - name: Trigger Render deploy
         run: |
           if [ -z "${DEPLOY_HOOK_URL:-}" ]; then
