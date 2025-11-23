@@ -32,16 +32,32 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'   # o la que uses tú
+          python-version: '3.11'   
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Reset database 
+        env:
+          MARIADB_DATABASE: ${{ secrets.MARIADB_DATABASE }}
+          MARIADB_HOSTNAME: ${{ secrets.MARIADB_HOSTNAME }}
+          MARIADB_PASSWORD: ${{ secrets.MARIADB_PASSWORD }}
+          MARIADB_PORT: ${{ secrets.MARIADB_PORT }}
+          MARIADB_USER: ${{ secrets.MARIADB_USER }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-client
+
+          echo "Dropping and recreating database: $MARIADB_DATABASE"
+
+          mysql -h "$MARIADB_HOSTNAME" -P "$MARIADB_PORT" -u "$MARIADB_USER" -p"$MARIADB_PASSWORD" \
+            -e "DROP DATABASE IF EXISTS \`$MARIADB_DATABASE\`; CREATE DATABASE \`$MARIADB_DATABASE\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
       - name: Run migrations and seed
         env:
-          FLASK_APP: app.py                 # cámbialo si tu entrypoint es otro
+          FLASK_APP: app.py
           FLASK_ENV: production
           MARIADB_DATABASE: ${{ secrets.MARIADB_DATABASE }}
           MARIADB_HOSTNAME: ${{ secrets.MARIADB_HOSTNAME }}
@@ -49,10 +65,9 @@ jobs:
           MARIADB_PORT: ${{ secrets.MARIADB_PORT }}
           MARIADB_USER: ${{ secrets.MARIADB_USER }}
         run: |
-          # Migraciones (Flask-Migrate)
           flask db upgrade
-          # Seeder del proyecto
           rosemary db:seed
+
 
       - name: Trigger Render deploy
         run: |
