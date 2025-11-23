@@ -1,17 +1,17 @@
-"""empty message
+"""002
 
-Revision ID: b6f2a88d0b88
-Revises: 81cb12633e6f
-Create Date: 2025-11-10 18:08:13.844555
+Revision ID: 925686c75422
+Revises: 001
+Create Date: 2025-11-23 15:00:17.107659
 
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import mysql
+
 
 # revision identifiers, used by Alembic.
-revision = '3e0b217aba43'
-down_revision = '81cb12633e6f'
+revision = '002'
+down_revision = '001'
 branch_labels = None
 depends_on = None
 
@@ -24,10 +24,6 @@ def upgrade():
     sa.Column('description', sa.String(length=255), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
-    )
-    op.create_table('webhook',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('community',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -48,7 +44,6 @@ def upgrade():
     sa.ForeignKeyConstraint(['dataset_id'], ['data_set.id'], ),
     sa.PrimaryKeyConstraint('community_id', 'dataset_id')
     )
-    op.drop_table('notepad')
     with op.batch_alter_table('data_set', schema=None) as batch_op:
         batch_op.add_column(sa.Column('download_count', sa.Integer(), nullable=False))
 
@@ -74,19 +69,7 @@ def downgrade():
     with op.batch_alter_table('data_set', schema=None) as batch_op:
         batch_op.drop_column('download_count')
 
-    op.create_table('notepad',
-    sa.Column('id', mysql.INTEGER(display_width=11), autoincrement=True, nullable=False),
-    sa.Column('title', mysql.VARCHAR(length=256), nullable=False),
-    sa.Column('body', mysql.TEXT(), nullable=False),
-    sa.Column('user_id', mysql.INTEGER(display_width=11), autoincrement=False, nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['user.id'], name=op.f('notepad_ibfk_1')),
-    sa.PrimaryKeyConstraint('id'),
-    mysql_collate='utf8mb4_uca1400_ai_ci',
-    mysql_default_charset='utf8mb4',
-    mysql_engine='InnoDB'
-    )
     op.drop_table('community_dataset_association')
     op.drop_table('community')
-    op.drop_table('webhook')
     op.drop_table('roles')
     # ### end Alembic commands ###
