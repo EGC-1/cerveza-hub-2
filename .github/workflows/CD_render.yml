@@ -32,12 +32,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'   
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -e .     # instala tu propio proyecto (importante para 'rosemary')
 
       - name: Reset database 
         env:
@@ -49,9 +50,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y mariadb-client
-
           echo "Dropping and recreating database: $MARIADB_DATABASE"
-
           mysql -h "$MARIADB_HOSTNAME" -P "$MARIADB_PORT" -u "$MARIADB_USER" -p"$MARIADB_PASSWORD" \
             -e "DROP DATABASE IF EXISTS \`$MARIADB_DATABASE\`; CREATE DATABASE \`$MARIADB_DATABASE\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
@@ -67,7 +66,6 @@ jobs:
         run: |
           flask db upgrade
           rosemary db:seed
-
 
       - name: Trigger Render deploy
         run: |
