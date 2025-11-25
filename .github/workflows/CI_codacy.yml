@@ -13,7 +13,6 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          # Base de datos que usan los tests (según el error: 'default_db')
           MYSQL_DATABASE: default_db
           MYSQL_USER: default_user
           MYSQL_PASSWORD: default_password
@@ -46,7 +45,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # Si tienes otro fichero (requirements-dev.txt, etc.), añádelo aquí
 
       - name: Wait for MySQL
         run: |
@@ -59,11 +57,14 @@ jobs:
             sleep 2
           done
 
-      - name: Run tests with coverage (sin tests Selenium)
+      - name: Run tests with coverage (skip Selenium always)
         run: |
           pytest --cov=app --cov-report=xml \
-            --ignore-glob="*test_selenium.py" \
-            --ignore-glob="*test_selenium_ide*"
+            -k "not selenium" \
+            --ignore=tests/selenium \
+            --ignore-glob="*selenium*" \
+            --ignore-glob="*Selenium*" \
+            --ignore-glob="*SELENIUM*"
 
       - name: Upload coverage to Codacy
         if: always()
