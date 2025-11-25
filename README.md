@@ -1,5 +1,5 @@
 <div style="text-align: center;">
-  <img src="https://www.uvlhub.io/static/img/logos/cervezaImg.svg" alt="Logo">
+  <img src="app\static\img\logos\cervezaImg.png">
 </div>
 
 # csvhub
