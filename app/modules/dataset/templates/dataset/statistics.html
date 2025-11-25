@@ -1,6 +1,6 @@
 {% extends "base_template.html" %}
 
-{% block title %}View dataset{% endblock %}
+{% block title %}Dataset Statistics{% endblock %}
 
 {% block head_extra %}
 <style>
@@ -22,67 +22,87 @@
 
     <div class="col-xl-8 col-lg-12 col-md-12 col-sm-12">
 
+        <!-- Tarjeta de Título (de la página de stats) -->
         <div class="card">
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div>
-                        <h1><b>{{ dataset.ds_meta_data.title }}</b></h1>
+                        <!-- Título de la página -->
+                        <h1 class="h2 mb-3"><b>Statistics:</b> {{ dataset.ds_meta_data.title }}</h1>
+                        
+                        <!-- =========================================== -->
+                        <!-- ==   BLOQUE "VOLVER" CORREGIDO           == -->
+                        <!-- =========================================== -->
+                        {% if dataset.ds_meta_data.dataset_doi %}
+                            <!-- Si SÍ tiene DOI, enlaza a la página del DOI -->
+                            <a href="{{ url_for('dataset.subdomain_index', doi=dataset.ds_meta_data.dataset_doi.replace('https://doi.org/', '')) }}" class="btn btn-primary btn-sm mt-2">
+                                <i data-feather="arrow-left" class="me-1"></i> Back to Dataset
+                            </a>
+                        {% else %}
+                            <!-- Si NO tiene DOI (ej. subida local), enlaza a la página local -->
+                            <a href="{{ url_for('dataset.get_unsynchronized_dataset', dataset_id=dataset.id) }}" class="btn btn-primary btn-sm mt-2">
+                                <i data-feather="arrow-left" class="me-1"></i> Back to Dataset (Local)
+                            </a>
+                        {% endif %}
+                        <!-- =========================================== -->
+                        <!-- ==   FIN DEL BLOQUE CORREGIDO            == -->
+                        <!-- =========================================== -->
                     </div>
                 </div>
             </div>
         </div>
 
-
+        <!-- Tarjeta de Estadísticas (Esto ya estaba bien) -->
         <div class="card mt-4">
             <div class="card-header">
-                <h5 class="card-title mb-0">Estadísticas</h5>
+                <h5 class="card-title mb-0">Statistics Summary</h5>
             </div>
             <div class="card-body">
                 
-                <h6 class="card-subtitle mb-2 text-muted">Datos Básicos</h6>
+                <h6 class="card-subtitle mb-2 text-muted">Basic Info</h6>
                 <ul class="list-group list-group-flush mb-3">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Total Visualizaciones
+                        Total Views
                         <span>{{ total_views }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Total Descargas
+                        Total Downloads
                         <span>{{ total_downloads }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Antigüedad (días)
+                        Age (days)
                         <span>{{ dataset_age_in_days }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Número de Autores
+                        Number of Authors
                         <span>{{ authors_number }}</span>
                     </li>
                 </ul>
 
-                <h6 class="card-subtitle mb-2 text-muted">Métricas del Dataset</h6>
+                <h6 class="card-subtitle mb-2 text-muted">CSV Metrics</h6>
                 <ul class="list-group list-group-flush mb-3">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Número de características
-                        <span>{{ features_count }}</span>
+                        Number of Rows (Records)
+                        <span>{{ filas_count }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Número de modelos
-                        <span>{{ models_count }}</span>
+                        Number of Columns
+                        <span>{{ columnas_count }}</span>
                     </li>
                 </ul>
 
-                <h6 class="card-subtitle mb-2 text-muted">Popularidad</h6>
+                <h6 class="card-subtitle mb-2 text-muted">Popularity</h6>
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Ratio Descarga
+                        Download Rate
                         <span>{{ download_rate }}%</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Visitas (últimos 7 días)
+                        Views (last 7 days)
                         <span>{{ views_last_week }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Descargas (últimos 7 días)
+                        Downloads (last 7 days)
                         <span>{{ downloads_last_week }}</span>
                     </li>
                 </ul>
@@ -92,12 +112,12 @@
     </div>
 </div>
 
-<!-- Modal-->
+<!-- Modal (Esto ya estaba bien) -->
 <div class="modal fade" id="fileViewerModal" tabindex="-1" aria-labelledby="fileViewerModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" style="height: 80vh; display: flex; align-items: center;">
+    <div class="modal-dialog modal-lg" style="height: 80vh; display: flex; align-items-center;">
         <div class="modal-content" style="height: 80vh;">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h5 class="modal-title" id="fileViewerModalLabel">Feature model view</h5>
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items-center;">
+                <h5 class="modal-title" id="fileViewerModalLabel">File View</h5>
                 <div>
                     <a href="#" class="btn btn-outline-primary btn-sm" id="downloadButton"
                         style="margin-right: 5px; margin-bottom: 5px; border-radius: 5px;">
@@ -112,7 +132,6 @@
             </div>
             <div class="modal-body" style="overflow-y: auto; height: calc(100vh - 50px);">
                 <pre id="fileContent" style="height: 100%; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; background-color: #f5f5f5; padding: 20px; border-radius: 5px; border: 1px solid #ccc;"></pre>
-
             </div>
         </div>
     </div>
@@ -120,8 +139,7 @@
 
 <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
 
-
-
+<!-- Script (sin cambios) -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         feather.replace();
@@ -146,51 +164,10 @@
         document.getElementById("loading").style.display = "initial";
     }
 
+
     function hideLoading() {
         document.getElementById("loading").style.display = "none";
     }
-
-    function checkUVL(file_id) {
-    const outputDiv = document.getElementById('check_' + file_id);
-    outputDiv.innerHTML = ''; // Clear previous output
-
-    fetch(`/flamapy/check_uvl/${file_id}`)
-        .then(response => {
-            return response.json().then(data => ({
-                status: response.status,
-                data
-            }));
-        })
-        .then(({ status, data }) => {
-            if (status === 400) {
-                // Display errors
-                if (data.errors) {
-                    outputDiv.innerHTML = '<span class="badge badge-danger">Errors:</span>';
-                    data.errors.forEach(error => {
-                        const errorElement = document.createElement('span');
-                        errorElement.className = 'badge badge-danger';
-                        errorElement.textContent = error;
-                        outputDiv.appendChild(errorElement);
-                        outputDiv.appendChild(document.createElement('br')); // Line break for better readability
-                    });
-                } else {
-                    outputDiv.innerHTML = `<span class="badge badge-danger">Error: ${data.error}</span>`;
-                }
-            } else if (status === 200) {
-                // Display success message
-                outputDiv.innerHTML = '<span class="badge badge-success">Valid Model</span>';
-            } else {
-                // Handle unexpected status
-                outputDiv.innerHTML = `<span class="badge badge-warning">Unexpected response status: ${status}</span>`;
-            }
-        })
-        .catch(error => {
-            // Handle fetch errors
-            outputDiv.innerHTML = `<span class="badge badge-danger">An unexpected error occurred: ${error.message}</span>`;
-        });
-}
-
-
 
     function copyToClipboard() {
         const text = document.getElementById('fileContent').textContent;
