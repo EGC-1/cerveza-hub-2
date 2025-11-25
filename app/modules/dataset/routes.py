@@ -60,11 +60,24 @@ def create_dataset():
         filename = secure_filename(f.filename)
     
         try:
+            # --- CORRECCIÓN AQUÍ: Lectura robusta del CSV ---
+            # Intentamos leer con diferentes codificaciones igual que en el validador
             f.seek(0) 
-            df = pd.read_csv(f)
+            try:
+                # Intento 1: UTF-8 y separador automático
+                df = pd.read_csv(f, encoding='utf-8', sep=None, engine='python')
+            except Exception:
+                # Intento 2: Latin-1 (común en Excel en español)
+                f.seek(0)
+                df = pd.read_csv(f, encoding='latin-1', sep=None, engine='python')
+            
+            # Recalculamos métricas básicas
             csv_row_count = len(df)
-            csv_column_names = ','.join(df.columns.tolist())
+            csv_column_names = ','.join(list(df.columns))
+            
+            # Importante: Rebobinar el archivo para guardarlo después
             f.seek(0)
+            # ------------------------------------------------
             
             metadata_dict = form.get_dsmetadata()
             meta_data = DSMetaData(**metadata_dict)
@@ -347,7 +360,13 @@ def subdomain_index(doi):
     csv_preview = []
     try:
         if dataset.csv_file_path and os.path.exists(dataset.csv_file_path):
-            df = pd.read_csv(dataset.csv_file_path)
+            # --- CORRECCIÓN AQUÍ TAMBIÉN PARA LA VISTA PREVIA ---
+            try:
+                df = pd.read_csv(dataset.csv_file_path, encoding='utf-8', sep=None, engine='python')
+            except Exception:
+                df = pd.read_csv(dataset.csv_file_path, encoding='latin-1', sep=None, engine='python')
+            # ----------------------------------------------------
+            
             csv_header = df.columns.tolist()
             csv_preview = df.head(10).values.tolist()
     except Exception as e:
@@ -406,7 +425,13 @@ def get_unsynchronized_dataset(dataset_id):
     csv_preview = []
     try:
         if dataset.csv_file_path and os.path.exists(dataset.csv_file_path):
-            df = pd.read_csv(dataset.csv_file_path)
+            # --- CORRECCIÓN AQUÍ TAMBIÉN PARA LA VISTA PREVIA ---
+            try:
+                df = pd.read_csv(dataset.csv_file_path, encoding='utf-8', sep=None, engine='python')
+            except Exception:
+                df = pd.read_csv(dataset.csv_file_path, encoding='latin-1', sep=None, engine='python')
+            # ----------------------------------------------------
+
             csv_header = df.columns.tolist()
             csv_preview = df.head(10).values.tolist()
     except Exception as e:
@@ -417,7 +442,7 @@ def get_unsynchronized_dataset(dataset_id):
         "dataset/view_dataset.html", 
         dataset=dataset,
         csv_header=csv_header,     
-        csv_preview=csv_preview   
+        csv_preview=csv_preview    
     ))
     
     if user_cookie: 
@@ -529,5 +554,5 @@ def manage_community_datasets(community_id):
         form.datasets.data = current_dataset_ids
     
     return render_template("community/manage_datasets.html", 
-                            community=community, 
-                            form=form)
+                           community=community, 
+                           form=form)

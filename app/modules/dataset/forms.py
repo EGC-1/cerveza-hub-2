@@ -6,7 +6,6 @@ from app.modules.dataset.models import PublicationType, DataSet, Community
 import pandas as pd
 
 class CommunityDatasetForm(FlaskForm):
-
     datasets = SelectMultipleField(
         label='Datasets Disponibles',
         description="Mantén presionada Ctrl/Cmd para seleccionar múltiples datasets."
@@ -86,54 +85,72 @@ class DataSetForm(FlaskForm):
         if not field.data:
             return
 
+        # Palabras clave (todo en minúsculas)
         beer_keywords = {
-            # Identificadores
-            'name', 'nombre', 'id', 'beer_name', 'cerveza', 'brand', 'marca',
-            
-            # Métricas Químicas/Físicas
+            'name', 'nombre', 'id', 'beer_name', 'cerveza', 'brand', 'marca', 'origen', 'year', 'año',
             'abv', 'alcohol', 'ibu', 'srm', 'ebc', 'og', 'fg', 'gravity', 
             'ph', 'color', 'bitterness', 'amargor', 'clarity',
-            
-            # Ingredientes
             'hops', 'lupulo', 'hop', 'malt', 'malta', 'grain', 'grano', 
             'yeast', 'levadura', 'adjuncts', 'ingredients', 'ingredientes',
-            
-            # Clasificación
             'style', 'estilo', 'category', 'categoria', 'type', 'tipo',
-            
-            # Producción/Origen
             'brewery', 'cerveceria', 'brewed', 'location', 'city', 'country', 
             'pais', 'region', 'state', 'batch', 'lote',
-            
-            # Cata/Reseñas
             'aroma', 'taste', 'sabor', 'palate', 'mouthfeel', 'cuerpo', 
             'finish', 'review', 'rating', 'score', 'puntuacion', 'notes', 'notas',
-            
-            # Envase/Comercial
             'oz', 'ml', 'volume', 'volumen', 'size', 'price', 'precio'
         }
 
-        try:
-            df = pd.read_csv(field.data, nrows=0)
-            
-            csv_columns = set([col.lower() for col in df.columns])
+        # Función para intentar leer (auto-detectando separador ; o ,)
+        def try_read(encoding):
+            field.data.seek(0)
+            try:
+                # sep=None y engine='python' detectan automáticamente ; o ,
+                return pd.read_csv(field.data, nrows=0, encoding=encoding, sep=None, engine='python')
+            except Exception:
+                return None
 
-            if not csv_columns.intersection(beer_keywords):
+        # 1. Intentar UTF-8
+        df = try_read('utf-8')
+        # 2. Si falla, intentar Latin-1 (común en España)
+        if df is None:
+            df = try_read('latin-1')
+
+        if df is None:
+            raise ValidationError("No se pudo leer el archivo. Verifica que sea un CSV válido.")
+
+        # --- VALIDACIÓN DE COLUMNAS (LÓGICA PARCIAL) ---
+        try:
+            # Limpiamos los nombres de las columnas del CSV
+            csv_columns = [str(col).lower().strip() for col in df.columns]
+            
+            # IMPRIMIR EN CONSOLA DOCKER (Para depurar)
+            print(f"DEBUG - Columnas leídas: {csv_columns}", flush=True)
+
+            found_match = False
+            # Buscamos si ALGUNA palabra clave está DENTRO de ALGUNA columna
+            # Ejemplo: "precio" está dentro de "precio día" -> ¡Éxito!
+            for col in csv_columns:
+                for keyword in beer_keywords:
+                    if keyword in col: 
+                        found_match = True
+                        break # Salir del bucle interno
+                if found_match: break # Salir del bucle externo
+
+            if not found_match:
+                detected_cols = ", ".join(csv_columns[:5])
                 raise ValidationError(
-                    f"El CSV no parece ser de cervezas. No se encontraron columnas como: {', '.join(list(beer_keywords)[:5])}..."
+                    f"El CSV no parece ser de cervezas. No encontré palabras clave en: [{detected_cols}]"
                 )
 
+        except ValidationError:
+            raise
+        except Exception as e:
+            raise ValidationError(f"Error procesando columnas: {str(e)}")
+        finally:
             field.data.seek(0)
 
-        except pd.errors.EmptyDataError:
-            raise ValidationError("El archivo CSV está vacío.")
-        except Exception as e:
-            raise ValidationError(f"Error al leer el CSV: {str(e)}")
-
     def get_dsmetadata(self):
-
         publication_type_converted = self.convert_publication_type(self.publication_type.data)
-
         return {
             "title": self.title.data,
             "description": self.desc.data,

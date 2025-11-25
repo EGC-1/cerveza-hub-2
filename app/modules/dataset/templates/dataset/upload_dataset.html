@@ -99,18 +99,7 @@
                             </div>
                             </div>
                         <div class="row" style="padding-left: 2rem">
-                            <div class="col-lg-6 col-12 mb-3">
-                                <label class="form-label">Author name</label>
-                                <input class="form-control" disabled value="{{ current_user.profile.surname }}, {{ current_user.profile.name }}">
-                            </div>
-                            <div class="col-lg-6 col-12 mb-3">
-                                <label class="form-label">Author affiliation</label>
-                                <input class="form-control" disabled value="{{ current_user.profile.affiliation }}">
-                            </div>
-                            <div class="col-lg-6 col-12 mb-3">
-                                <label class="form-label">Author ORCID</label>
-                                <input class="form-control" disabled value="{{ current_user.profile.orcid }}">
-                            </div>
+                            <!-- Se eliminaron los inputs duplicados 'disabled' que causaban confusión -->
                             <div class="col-12">
                                 <div class="mb-3">
                                     <div id="authors">
@@ -121,15 +110,40 @@
                                         >
                                             <div class="col-lg-6 col-12 mb-3">
                                                 {{ subform.form.name.label(class="form-label") }}
-                                                {{ subform.form.name(class="form-control", disabled=loop.first) }}
+                                                {% if loop.first %}
+                                                    {# Usamos 'or' para evitar que salga None si falta el apellido o nombre #}
+                                                    {# Añadido background-color: #e9ecef para simular el estado 'disabled' visualmente #}
+                                                    {{ subform.form.name(class="form-control", readonly=True, value=(current_user.profile.surname or '') ~ ", " ~ (current_user.profile.name or ''), style="color: black; background-color: #e9ecef;") }}
+                                                {% else %}
+                                                    {{ subform.form.name(class="form-control") }}
+                                                {% endif %}
+                                                {% for error in subform.form.name.errors %}
+                                                    <span style="color: red;">{{ error }}</span>
+                                                {% endfor %}
                                             </div>
                                             <div class="col-lg-6 col-12 mb-3">
                                                 {{ subform.form.affiliation.label(class="form-label") }}
-                                                {{ subform.form.affiliation(class="form-control", disabled=loop.first) }}
+                                                {% if loop.first %}
+                                                    {# Si no tiene afiliación, mostramos "Not specified" #}
+                                                    {{ subform.form.affiliation(class="form-control", readonly=True, value=current_user.profile.affiliation or 'Not specified', style="color: black; background-color: #e9ecef;") }}
+                                                {% else %}
+                                                    {{ subform.form.affiliation(class="form-control") }}
+                                                {% endif %}
+                                                {% for error in subform.form.affiliation.errors %}
+                                                    <span style="color: red;">{{ error }}</span>
+                                                {% endfor %}
                                             </div>
                                             <div class="col-lg-6 col-12 mb-3">
-                                                {{ subform.orcid.label(class="form-label") }}
-                                                {{ subform.orcid(class="form-control", disabled=loop.first) }}
+                                                {{ subform.form.orcid.label(class="form-label") }}
+                                                {% if loop.first %}
+                                                    {# Si no tiene ORCID, mostramos "Not specified" #}
+                                                    {{ subform.form.orcid(class="form-control", readonly=True, value=current_user.profile.orcid or 'Not specified', style="color: black; background-color: #e9ecef;") }}
+                                                {% else %}
+                                                    {{ subform.form.orcid(class="form-control") }}
+                                                {% endif %}
+                                                {% for error in subform.form.orcid.errors %}
+                                                    <span style="color: red;">{{ error }}</span>
+                                                {% endfor %}
                                             </div>
                                         </div>
                                         {% endfor %}
