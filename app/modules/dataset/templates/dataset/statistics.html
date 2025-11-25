@@ -22,37 +22,32 @@
 
     <div class="col-xl-8 col-lg-12 col-md-12 col-sm-12">
 
-        <!-- Tarjeta de Título (de la página de stats) -->
+    
         <div class="card">
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div>
-                        <!-- Título de la página -->
+                     
                         <h1 class="h2 mb-3"><b>Statistics:</b> {{ dataset.ds_meta_data.title }}</h1>
                         
-                        <!-- =========================================== -->
-                        <!-- ==   BLOQUE "VOLVER" CORREGIDO           == -->
-                        <!-- =========================================== -->
+                      
                         {% if dataset.ds_meta_data.dataset_doi %}
-                            <!-- Si SÍ tiene DOI, enlaza a la página del DOI -->
+                           
                             <a href="{{ url_for('dataset.subdomain_index', doi=dataset.ds_meta_data.dataset_doi.replace('https://doi.org/', '')) }}" class="btn btn-primary btn-sm mt-2">
                                 <i data-feather="arrow-left" class="me-1"></i> Back to Dataset
                             </a>
                         {% else %}
-                            <!-- Si NO tiene DOI (ej. subida local), enlaza a la página local -->
+                      
                             <a href="{{ url_for('dataset.get_unsynchronized_dataset', dataset_id=dataset.id) }}" class="btn btn-primary btn-sm mt-2">
                                 <i data-feather="arrow-left" class="me-1"></i> Back to Dataset (Local)
                             </a>
                         {% endif %}
-                        <!-- =========================================== -->
-                        <!-- ==   FIN DEL BLOQUE CORREGIDO            == -->
-                        <!-- =========================================== -->
+                
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Tarjeta de Estadísticas (Esto ya estaba bien) -->
         <div class="card mt-4">
             <div class="card-header">
                 <h5 class="card-title mb-0">Statistics Summary</h5>
@@ -112,7 +107,7 @@
     </div>
 </div>
 
-<!-- Modal (Esto ya estaba bien) -->
+
 <div class="modal fade" id="fileViewerModal" tabindex="-1" aria-labelledby="fileViewerModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" style="height: 80vh; display: flex; align-items-center;">
         <div class="modal-content" style="height: 80vh;">
@@ -139,7 +134,7 @@
 
 <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
 
-<!-- Script (sin cambios) -->
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         feather.replace();

@@ -7,10 +7,10 @@ import pandas as pd
 
 class CommunityDatasetForm(FlaskForm):
     datasets = SelectMultipleField(
-        label='Datasets Disponibles',
-        description="Mantén presionada Ctrl/Cmd para seleccionar múltiples datasets."
+        label='Available Datasets',
+        description="Hold Ctrl/Cmd to select multiple datasets."
     )
-    submit = SubmitField('Guardar Datasets')
+    submit = SubmitField('Save Datasets')
     
 class AuthorForm(FlaskForm):
     name = StringField("Name", validators=[DataRequired()])
@@ -30,37 +30,37 @@ class AuthorForm(FlaskForm):
 
 class CommunityForm(FlaskForm):
     name = StringField(
-        "Nombre de la Comunidad", 
-        validators=[DataRequired(message="El nombre es obligatorio."), Length(min=5, max=120)]
+        "Community Name", 
+        validators=[DataRequired(message="Name is required."), Length(min=5, max=120)]
     )
     description = TextAreaField(
-        "Descripción", 
-        validators=[DataRequired(message="La descripción es obligatoria.")]
+        "Description", 
+        validators=[DataRequired(message="Description is required.")]
     )
     logo = FileField(
-        "Logo de la Comunidad", 
-        validators=[DataRequired(message='El logo es obligatorio.'),
-                    FileAllowed(['jpg', 'png', 'jpeg'], 'Solo se permiten imágenes JPG, JPEG o PNG!')] 
+        "Community Logo", 
+        validators=[DataRequired(message='Logo is required.'),
+                    FileAllowed(['jpg', 'png', 'jpeg'], 'Only JPG, JPEG or PNG images are allowed!')] 
     )
-    submit = SubmitField("Crear Comunidad")
+    submit = SubmitField("Create Community")
     
     def get_community_data(self):
-        """Retorna los datos de texto del formulario."""
+        """Returns the form text data."""
         return {
             "name": self.name.data,
             "description": self.description.data,
         }
+
     def validate_name(self, name):
         if Community.query.filter_by(name=name.data).first():
-            raise ValidationError('Ya existe una comunidad con este nombre. Por favor, elige otro.')
-        
+            raise ValidationError('A community with this name already exists. Please choose another.')
 
 class DataSetForm(FlaskForm):
     title = StringField("Title", validators=[DataRequired()])
     desc = TextAreaField("Description", validators=[DataRequired()])
     
     publication_type = SelectField(
-        "Publication type",
+        "Publication Type",
         choices=[(pt.value, pt.name.replace("_", " ").title()) for pt in PublicationType],
         validators=[DataRequired()],
     )
@@ -72,10 +72,10 @@ class DataSetForm(FlaskForm):
     authors = FieldList(FormField(AuthorForm), min_entries=1)
     
     csv_file = FileField(
-        'Archivo CSV del Dataset',
+        'Dataset CSV File',
         validators=[
-            FileRequired(message='¡No has seleccionado ningún archivo!'),
-            FileAllowed(['csv'], message='¡Solo se permiten archivos .csv!')
+            FileRequired(message='You did not select any file!'),
+            FileAllowed(['csv'], message='Only .csv files are allowed!')
         ]
     )
 
@@ -85,7 +85,6 @@ class DataSetForm(FlaskForm):
         if not field.data:
             return
 
-        # Palabras clave (todo en minúsculas)
         beer_keywords = {
             'name', 'nombre', 'id', 'beer_name', 'cerveza', 'brand', 'marca', 'origen', 'year', 'año',
             'abv', 'alcohol', 'ibu', 'srm', 'ebc', 'og', 'fg', 'gravity', 
@@ -100,52 +99,46 @@ class DataSetForm(FlaskForm):
             'oz', 'ml', 'volume', 'volumen', 'size', 'price', 'precio'
         }
 
-        # Función para intentar leer (auto-detectando separador ; o ,)
         def try_read(encoding):
             field.data.seek(0)
             try:
-                # sep=None y engine='python' detectan automáticamente ; o ,
                 return pd.read_csv(field.data, nrows=0, encoding=encoding, sep=None, engine='python')
             except Exception:
                 return None
 
-        # 1. Intentar UTF-8
+  
         df = try_read('utf-8')
-        # 2. Si falla, intentar Latin-1 (común en España)
+        
         if df is None:
             df = try_read('latin-1')
 
         if df is None:
-            raise ValidationError("No se pudo leer el archivo. Verifica que sea un CSV válido.")
+            raise ValidationError("The file could not be read. Make sure it is a valid CSV.")
 
-        # --- VALIDACIÓN DE COLUMNAS (LÓGICA PARCIAL) ---
+     
         try:
-            # Limpiamos los nombres de las columnas del CSV
+      
             csv_columns = [str(col).lower().strip() for col in df.columns]
-            
-            # IMPRIMIR EN CONSOLA DOCKER (Para depurar)
-            print(f"DEBUG - Columnas leídas: {csv_columns}", flush=True)
 
             found_match = False
-            # Buscamos si ALGUNA palabra clave está DENTRO de ALGUNA columna
-            # Ejemplo: "precio" está dentro de "precio día" -> ¡Éxito!
+        
             for col in csv_columns:
                 for keyword in beer_keywords:
                     if keyword in col: 
                         found_match = True
-                        break # Salir del bucle interno
-                if found_match: break # Salir del bucle externo
+                        break 
+                if found_match: break 
 
             if not found_match:
                 detected_cols = ", ".join(csv_columns[:5])
                 raise ValidationError(
-                    f"El CSV no parece ser de cervezas. No encontré palabras clave en: [{detected_cols}]"
+                    f"The CSV does not appear to be beer-related. No keywords found in: [{detected_cols}]"
                 )
 
         except ValidationError:
             raise
         except Exception as e:
-            raise ValidationError(f"Error procesando columnas: {str(e)}")
+            raise ValidationError(f"Error processing columns: {str(e)}")
         finally:
             field.data.seek(0)
 

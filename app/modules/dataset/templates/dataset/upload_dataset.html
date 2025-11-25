@@ -93,13 +93,12 @@
                         </div>
 
                         <h1 class="h3 mb-3 mt-4">Authors</h1>
-                        <div class="modal fade" id="infoModal" tabindex="-1" role="dialog" aria-labelledby="infoModalLabel" aria-hidden="true" style="display: none">
-                            <div class="modal-body">
-                                ¡Cuidado! Los autores no se pueden editar una vez que el dataset se haya subido a CervezaHub.
-                            </div>
-                            </div>
+
+                        <div class="alert alert-warning mt-3" role="alert">
+                            <strong>Warning!</strong> Authors cannot be edited once the dataset has been uploaded to CervezaHub.
+                        </div>
+
                         <div class="row" style="padding-left: 2rem">
-                            <!-- Se eliminaron los inputs duplicados 'disabled' que causaban confusión -->
                             <div class="col-12">
                                 <div class="mb-3">
                                     <div id="authors">
@@ -111,8 +110,6 @@
                                             <div class="col-lg-6 col-12 mb-3">
                                                 {{ subform.form.name.label(class="form-label") }}
                                                 {% if loop.first %}
-                                                    {# Usamos 'or' para evitar que salga None si falta el apellido o nombre #}
-                                                    {# Añadido background-color: #e9ecef para simular el estado 'disabled' visualmente #}
                                                     {{ subform.form.name(class="form-control", readonly=True, value=(current_user.profile.surname or '') ~ ", " ~ (current_user.profile.name or ''), style="color: black; background-color: #e9ecef;") }}
                                                 {% else %}
                                                     {{ subform.form.name(class="form-control") }}
@@ -124,7 +121,6 @@
                                             <div class="col-lg-6 col-12 mb-3">
                                                 {{ subform.form.affiliation.label(class="form-label") }}
                                                 {% if loop.first %}
-                                                    {# Si no tiene afiliación, mostramos "Not specified" #}
                                                     {{ subform.form.affiliation(class="form-control", readonly=True, value=current_user.profile.affiliation or 'Not specified', style="color: black; background-color: #e9ecef;") }}
                                                 {% else %}
                                                     {{ subform.form.affiliation(class="form-control") }}
@@ -136,7 +132,6 @@
                                             <div class="col-lg-6 col-12 mb-3">
                                                 {{ subform.form.orcid.label(class="form-label") }}
                                                 {% if loop.first %}
-                                                    {# Si no tiene ORCID, mostramos "Not specified" #}
                                                     {{ subform.form.orcid(class="form-control", readonly=True, value=current_user.profile.orcid or 'Not specified', style="color: black; background-color: #e9ecef;") }}
                                                 {% else %}
                                                     {{ subform.form.orcid(class="form-control") }}
@@ -153,7 +148,7 @@
                             </div>
                         </div>
                         
-                        <h1 class="h3 mb-3 mt-4">Archivo CSV</h1>
+                        <h1 class="h3 mb-3 mt-4">CSV file</h1>
                         <div class="row" style="padding-left: 2rem">
                             <div class="col-12">
                                 <div class="mb-3">
@@ -210,10 +205,9 @@
                 });
             }
             
-            // Mostrar "loading" al enviar
+            // Show "loading" when submitting
             if (form && upload_button && loadingDiv) {
                 form.addEventListener('submit', function() {
-                    // Deshabilitar el botón y mostrar el spinner
                     upload_button.disabled = true;
                     loadingDiv.style.display = 'block';
                 });

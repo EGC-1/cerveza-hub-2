@@ -60,24 +60,18 @@ def create_dataset():
         filename = secure_filename(f.filename)
     
         try:
-            # --- CORRECCIÓN AQUÍ: Lectura robusta del CSV ---
-            # Intentamos leer con diferentes codificaciones igual que en el validador
+            # --- FIX HERE: robust CSV reading ---
             f.seek(0) 
             try:
-                # Intento 1: UTF-8 y separador automático
                 df = pd.read_csv(f, encoding='utf-8', sep=None, engine='python')
             except Exception:
-                # Intento 2: Latin-1 (común en Excel en español)
                 f.seek(0)
                 df = pd.read_csv(f, encoding='latin-1', sep=None, engine='python')
             
-            # Recalculamos métricas básicas
             csv_row_count = len(df)
             csv_column_names = ','.join(list(df.columns))
             
-            # Importante: Rebobinar el archivo para guardarlo después
             f.seek(0)
-            # ------------------------------------------------
             
             metadata_dict = form.get_dsmetadata()
             meta_data = DSMetaData(**metadata_dict)
@@ -110,12 +104,12 @@ def create_dataset():
             dataset.csv_file_path = file_path
             db.session.commit()
             
-            logger.info(f"Creado dataset CSV: {dataset}")
+            logger.info(f"CSV dataset created: {dataset}")
 
         except Exception as exc:
             db.session.rollback()
-            logger.exception(f"Exception while create CSV dataset data in local {exc}")
-            flash(f"Error al crear el dataset local: {exc}", "danger")
+            logger.exception(f"Exception while creating local CSV dataset {exc}")
+            flash(f"Error creating local dataset: {exc}", "danger")
             return render_template("dataset/upload_dataset.html", form=form)
 
         data = {}
@@ -125,29 +119,29 @@ def create_dataset():
             data = json.loads(json.dumps(zenodo_response_json))
         except Exception as exc:
             data = {}
-            logger.exception(f"Exception while create dataset data in Zenodo {exc}")
+            logger.exception(f"Exception while creating dataset in Zenodo {exc}")
 
         if data.get("conceptrecid"):
             deposition_id = data.get("id")
             dataset_service.update_dsmetadata(dataset.ds_meta_data_id, deposition_id=deposition_id)
 
             try:
-                logger.info(f"Subiendo {file_path} a Zenodo...")
+                logger.info(f"Uploading {file_path} to Zenodo...")
                 zenodo_service.upload_file(dataset, deposition_id, file_path, filename)
                 zenodo_service.publish_deposition(deposition_id)
 
                 deposition_doi = zenodo_service.get_doi(deposition_id) 
                 dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=deposition_doi)
                 
-                flash('¡Tu Cerveza-Dataset se ha subido y publicado en Zenodo!', 'success')
+                flash('Your Beer-Dataset has been uploaded and published on Zenodo!', 'success')
                 
             except Exception as e:
-                msg = f"Dataset creado localmente (id: {dataset.id}), pero ha fallado la subida a Zenodo: {e}"
+                msg = f"Dataset created locally (id: {dataset.id}), but Zenodo upload failed: {e}"
                 logger.exception(msg)
                 flash(msg, 'warning')
                 
         else:
-             flash('Dataset creado localmente, pero ha fallado la conexión con Zenodo.', 'warning')
+             flash('Dataset created locally, but connection with Zenodo failed.', 'warning')
 
         if deposition_doi:
             doi_only = deposition_doi.replace("https://doi.org/", "")
@@ -175,7 +169,7 @@ def upload():
     temp_folder = current_user.temp_folder()
 
     if not file or not file.filename.endswith(".csv"):
-        return jsonify({"message": "Archivo no válido. Solo se permiten .csv"}), 400
+        return jsonify({"message": "Invalid file. Only .csv allowed"}), 400
 
     if not os.path.exists(temp_folder):
         os.makedirs(temp_folder)
@@ -197,7 +191,7 @@ def upload():
     return (
         jsonify(
             {
-                "message": "CSV subido y validado correctamente",
+                "message": "CSV uploaded and validated successfully",
                 "filename": new_filename,
             }
         ),
@@ -224,7 +218,7 @@ def download_dataset(dataset_id):
     dataset = dataset_service.get_or_404(dataset_id)
 
     if not dataset.csv_file_path or not os.path.exists(dataset.csv_file_path):
-        flash("Error: No se encontró el archivo CSV para este dataset.", "danger")
+        flash("Error: CSV file for this dataset not found.", "danger")
         try:
             doi_only = dataset.ds_meta_data.dataset_doi.replace("https://doi.org/", "")
             return redirect(url_for('dataset.subdomain_index', doi=doi_only))
@@ -277,7 +271,7 @@ def download_dataset(dataset_id):
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            print(f"Error al incrementar el contador de descargas: {e}")
+            print(f"Error incrementing download counter: {e}")
 
     return resp
 
@@ -330,7 +324,7 @@ def subdomain_index(doi):
 
     dataset = ds_meta_data.data_set
     if not dataset:
-        logger.error(f"No se encontró un DataSet para los metadatos con DOI {doi}")
+        logger.error(f"No DataSet found for metadata with DOI {doi}")
         abort(404)
 
     user_cookie = None 
@@ -353,24 +347,22 @@ def subdomain_index(doi):
                 view_cookie=user_cookie,
             )
     except Exception as e:
-        logger.warning(f"No se pudo grabar la visita para el dataset {dataset.id}: {e}")
+        logger.warning(f"Could not save view record for dataset {dataset.id}: {e}")
 
 
     csv_header = []
     csv_preview = []
     try:
         if dataset.csv_file_path and os.path.exists(dataset.csv_file_path):
-            # --- CORRECCIÓN AQUÍ TAMBIÉN PARA LA VISTA PREVIA ---
             try:
                 df = pd.read_csv(dataset.csv_file_path, encoding='utf-8', sep=None, engine='python')
             except Exception:
                 df = pd.read_csv(dataset.csv_file_path, encoding='latin-1', sep=None, engine='python')
-            # ----------------------------------------------------
             
             csv_header = df.columns.tolist()
             csv_preview = df.head(10).values.tolist()
     except Exception as e:
-        logger.exception(f"No se pudo generar la vista previa del CSV para {dataset.id}: {e}")
+        logger.exception(f"CSV preview generation failed for {dataset.id}: {e}")
         pass 
     
     resp = make_response(render_template(
@@ -396,7 +388,7 @@ def get_unsynchronized_dataset(dataset_id):
         
     if dataset.ds_meta_data.dataset_doi:
         doi_only = dataset.ds_meta_data.dataset_doi.replace("https://doi.org/", "")
-        return redirect(url_for('dataset.subdomain_index', doi=doi_only), code=301) # Redirigir permanentemente
+        return redirect(url_for('dataset.subdomain_index', doi=doi_only), code=301)
 
     user_cookie = None 
     try:
@@ -418,24 +410,22 @@ def get_unsynchronized_dataset(dataset_id):
                 view_cookie=user_cookie,
             )
     except Exception as e:
-        logger.warning(f"No se pudo grabar la visita para el dataset {dataset.id}: {e}")
+        logger.warning(f"Could not save view record for dataset {dataset.id}: {e}")
  
 
     csv_header = []
     csv_preview = []
     try:
         if dataset.csv_file_path and os.path.exists(dataset.csv_file_path):
-            # --- CORRECCIÓN AQUÍ TAMBIÉN PARA LA VISTA PREVIA ---
             try:
                 df = pd.read_csv(dataset.csv_file_path, encoding='utf-8', sep=None, engine='python')
             except Exception:
                 df = pd.read_csv(dataset.csv_file_path, encoding='latin-1', sep=None, engine='python')
-            # ----------------------------------------------------
 
             csv_header = df.columns.tolist()
             csv_preview = df.head(10).values.tolist()
     except Exception as e:
-        logger.exception(f"No se pudo generar la vista previa del CSV para {dataset.id}: {e}")
+        logger.exception(f"CSV preview generation failed for {dataset.id}: {e}")
         pass 
 
     resp = make_response(render_template(
@@ -461,11 +451,11 @@ def create_community():
             try:
                 if not form.logo.validate(form, extra_validators=form.logo.validators):
                     if not form.logo.errors:
-                        form.logo.errors.append("Tipo de archivo de logo no permitido.")
+                        form.logo.errors.append("Logo file type not allowed.")
                     pass 
 
             except Exception:
-                form.logo.errors.append("Error al procesar el archivo de logo.")
+                form.logo.errors.append("Error processing logo file.")
                 pass
                 
         else:
@@ -480,8 +470,8 @@ def create_community():
                 return redirect(url_for('dataset.view_community', community_id=community.id))
 
             except Exception as exc:
-                logger.exception(f"Excepción al crear la comunidad: {exc}")
-                form.name.errors.append("Ya existe una comunidad con este nombre. Por favor, elige otro.")
+                logger.exception(f"Exception while creating community: {exc}")
+                form.name.errors.append("A community with this name already exists. Please choose another.")
                 
     return render_template("community/create_community.html", form=form)
 
@@ -494,7 +484,7 @@ def view_community(community_id):
 
 @dataset_bp.route("/communities/", methods=["GET"])
 def list_communities():
-    """Muestra una lista de todas las comunidades creadas."""
+    """Shows a list of all created communities."""
     
     try:
         communities = community_service.get_all_communities()
@@ -502,20 +492,19 @@ def list_communities():
         return render_template("community/list_communities.html", communities=communities)
         
     except Exception as exc:
-        logger.exception(f"Excepción al listar comunidades: {exc}")
-        return jsonify({"Error": "No se pudo cargar la lista de comunidades."}), 500
+        logger.exception(f"Exception while listing communities: {exc}")
+        return jsonify({"Error": "Could not load the communities list."}), 500
     
     
 @dataset_bp.route("/community/<int:community_id>/logo", methods=["GET"])
 def serve_community_logo(community_id):
 
-    
     community = community_service.get_or_404(community_id)
     full_path = community.logo_path
     
     if not full_path or not os.path.exists(full_path):
-
         return redirect(url_for('static', filename='images/default_community_logo.png'))
+
     working_dir = os.getenv("WORKING_DIR", os.path.join(os.getcwd(), "tmp_uploads")) 
     directory = os.path.dirname(full_path)
     filename = os.path.basename(full_path) 
@@ -541,13 +530,12 @@ def manage_community_datasets(community_id):
 
             community_service.update_datasets(community, selected_datasets)
 
-            flash(f"Datasets actualizados para la comunidad '{community.name}'.", 'success')
+            flash(f"Datasets updated for community '{community.name}'.", 'success')
             return redirect(url_for('dataset.view_community', community_id=community.id))
         
         except Exception as exc:
-
             community_service.repository.session.rollback() 
-            flash('Error al guardar la relación de datasets.', 'danger')
+            flash('Error saving dataset relationship.', 'danger')
 
     elif request.method == 'GET':
         current_dataset_ids = [str(ds.id) for ds in community.datasets] 
