@@ -4,12 +4,9 @@ import os
 import requests
 from dotenv import load_dotenv
 from flask import Response, jsonify
-from flask_login import current_user
 
 from app.modules.dataset.models import DataSet
-from app.modules.featuremodel.models import FeatureModel
 from app.modules.zenodo.repositories import ZenodoRepository
-from core.configuration.configuration import uploads_folder_name
 from core.services.BaseService import BaseService
 
 logger = logging.getLogger(__name__)
@@ -119,6 +116,7 @@ class ZenodoService(BaseService):
             os.remove(file_path)
 
         return jsonify({"success": success, "messages": messages})
+    
 
     def get_all_depositions(self) -> dict:
         """
@@ -146,6 +144,16 @@ class ZenodoService(BaseService):
         logger.info("Dataset sending to Zenodo...")
         logger.info(f"Publication type...{dataset.ds_meta_data.publication_type.value}")
 
+        description_html = f"""
+        <p>{dataset.ds_meta_data.description}</p>
+        <br>
+        <h4>Estadísticas del CSV:</h4>
+        <ul>
+            <li><strong>Número de Filas:</strong> {dataset.row_count}</li>
+            <li><strong>Columnas:</strong> {dataset.column_names}</li>
+        </ul>
+        """
+        
         metadata = {
             "title": dataset.ds_meta_data.title,
             "upload_type": "dataset" if dataset.ds_meta_data.publication_type.value == "none" else "publication",
@@ -154,7 +162,7 @@ class ZenodoService(BaseService):
                 if dataset.ds_meta_data.publication_type.value != "none"
                 else None
             ),
-            "description": dataset.ds_meta_data.description,
+            "description": description_html,    
             "creators": [
                 {
                     "name": author.name,
@@ -164,7 +172,7 @@ class ZenodoService(BaseService):
                 for author in dataset.ds_meta_data.authors
             ],
             "keywords": (
-                ["uvlhub"] if not dataset.ds_meta_data.tags else dataset.ds_meta_data.tags.split(", ") + ["uvlhub"]
+                ["cervezahub", "csv"] if not dataset.ds_meta_data.tags else dataset.ds_meta_data.tags.split(", ") + ["cervezahub", "csv"]
             ),
             "access_right": "open",
             "license": "CC-BY-4.0",
@@ -178,30 +186,42 @@ class ZenodoService(BaseService):
             raise Exception(error_message)
         return response.json()
 
-    def upload_file(self, dataset: DataSet, deposition_id: int, feature_model: FeatureModel, user=None) -> dict:
+    def upload_file(self, dataset: DataSet, deposition_id: int, file_path: str, filename: str) -> dict:
         """
-        Upload a file to a deposition in Zenodo.
+        Upload a single CSV file to a Zenodo repository.
 
         Args:
-            deposition_id (int): The ID of the deposition in Zenodo.
-            feature_model (FeatureModel): The FeatureModel object representing the feature model.
-            user (FeatureModel): The User object representing the file owner.
-
+        dataset (DataSet): The dataset to which the file belongs.
+        deposition_id (int): The ID of the repository in Zenodo.
+        file_path (str): The *full* path to the file on disk (e.g., /app/uploads/user_1/dataset_1/cervezas.csv).
+        filename (str): The name the file will have in Zenodo (e.g., cervezas.csv).
+        
         Returns:
-            dict: The response in JSON format with the details of the uploaded file.
+        dict: The response in JSON format with the details of the uploaded file.
         """
-        uvl_filename = feature_model.fm_meta_data.uvl_filename
-        data = {"name": uvl_filename}
-        user_id = current_user.id if user is None else user.id
-        file_path = os.path.join(uploads_folder_name(), f"user_{str(user_id)}", f"dataset_{dataset.id}/", uvl_filename)
-        files = {"file": open(file_path, "rb")}
+        
+        data = {"name": filename}
+
+        try:
+            files = {"file": open(file_path, "rb")}
+        except FileNotFoundError:
+            error_message = f"Fallo al subir a Zenodo: El archivo no se encontró en {file_path}"
+            logger.exception(error_message)
+            raise Exception(error_message)
 
         publish_url = f"{self.ZENODO_API_URL}/{deposition_id}/files"
-        response = requests.post(publish_url, params=self.params, data=data, files=files)
-        if response.status_code != 201:
-            error_message = f"Failed to upload files. Error details: {response.json()}"
-            raise Exception(error_message)
-        return response.json()
+        
+        try:
+            response = requests.post(publish_url, params=self.params, data=data, files=files)
+            
+            if response.status_code != 201:
+                error_message = f"Fallo al subir archivos a Zenodo. Detalles: {response.json()}"
+                raise Exception(error_message)
+                
+            return response.json()
+            
+        finally:
+            files["file"].close()
 
     def publish_deposition(self, deposition_id: int) -> dict:
         """
