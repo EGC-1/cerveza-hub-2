@@ -528,7 +528,7 @@ def manage_community_datasets(community_id):
             selected_dataset_ids = form.datasets.data 
             selected_datasets = DataSet.query.filter(DataSet.id.in_(selected_dataset_ids)).all()
 
-            community_service.update_datasets(community, selected_datasets)
+            community_service.update_datasets(community.id, selected_datasets)
 
             flash(f"Datasets updated for community '{community.name}'.", 'success')
             return redirect(url_for('dataset.view_community', community_id=community.id))

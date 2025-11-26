@@ -6,11 +6,8 @@ from app import db
 
 
 def test_create_community_model(test_client):
-    # Obtener usuario creado por el fixture
     user = User.query.first()
     assert user is not None
-
-    # Crear comunidad a nivel de modelo
     community = Community(
         name="Test Community",
         description="Descripción de prueba",
@@ -19,12 +16,10 @@ def test_create_community_model(test_client):
     )
     db.session.add(community)
     db.session.commit()
-
-    # Recuperar desde la BD y comprobar campos
     c = Community.query.filter_by(name="Test Community").first()
     assert c is not None
     assert c.creator_user_id == user.id
     assert "Test Community" in repr(c)
-    d = c.to_dict()
-    assert d["name"] == "Test Community"
-    assert "logo_path" in d
+    assert c.name == "Test Community"
+    assert c.logo_path == "/tmp/fake_logo.png"
+    assert c.description == "Descripción de prueba"

@@ -1,8 +1,9 @@
 import time
 import os
+import uuid
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC 
 
 from core.environment.host import get_host_for_selenium_testing
@@ -11,82 +12,97 @@ from core.selenium.common import close_driver, initialize_driver
 
 def wait_for_page_to_load(driver, timeout=4):
     """Espera a que el estado del documento sea 'complete'."""
-    WebDriverWait(driver, timeout).until(
-        lambda driver: driver.execute_script("return document.readyState") == "complete"
-    )
+    try:
+        WebDriverWait(driver, timeout).until(
+            lambda driver: driver.execute_script("return document.readyState") == "complete"
+        )
+    except:
+        pass
 
-
-def test_create_community_selenium():
+def test_community_workflow_selenium():
     driver = initialize_driver()
+    unique_suffix = uuid.uuid4().hex[:6]
+    community_name = f"Selenium Community {unique_suffix}"
+    
+    logo_path = os.path.abspath(f"temp_logo_{unique_suffix}.png")
+    with open(logo_path, "wb") as f: f.write(b"fake_png_data")
 
     try:
         host = get_host_for_selenium_testing()
-
-        # 1. AUTENTICACIÓN
+        
+        # LOGIN
         driver.get(f"{host}/login")
         wait_for_page_to_load(driver)
+        driver.find_element(By.NAME, "email").send_keys("user1@example.com")
+        driver.find_element(By.NAME, "password").send_keys("1234")
+        driver.find_element(By.NAME, "password").send_keys(Keys.RETURN)
+        WebDriverWait(driver, 10).until_not(EC.url_contains("/login"))
 
-        email_field = driver.find_element(By.NAME, "email")
-        password_field = driver.find_element(By.NAME, "password")
-
-        # Usamos las credenciales que funcionan en tus otros tests
-        email_field.send_keys("user1@example.com") 
-        password_field.send_keys("1234")
-
-        password_field.send_keys(Keys.RETURN)
-        
-        # Sincronización robusta: Esperar que el login termine
-        try:
-            WebDriverWait(driver, 10).until_not(
-                 EC.url_contains("/login")
-             )
-        except Exception:
-            print(f"Error de autenticación. URL: {driver.current_url}")
-            raise
-
-        wait_for_page_to_load(driver) 
-
-        # 2. IR A CREAR COMUNIDAD Y ESPERAR EL FORMULARIO
+        # CREAR COMUNIDAD
         driver.get(f"{host}/community/create")
+        wait_for_page_to_load(driver)
+        driver.find_element(By.NAME, "name").send_keys(community_name)
+        driver.find_element(By.XPATH, "//textarea[@name='description']").send_keys("Test")
+        driver.find_element(By.NAME, "logo").send_keys(logo_path)
         
-        # Espera para el campo "name" (Selector confirmado por la vista)
-        try:
-            name_field = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.NAME, "name"))
-            )
-        except Exception as e:
-            print(f"No se encontró el formulario. URL actual: {driver.current_url}")
-            raise e
-
-        # 3. INTERACCIÓN CON EL FORMULARIO (Selectores confirmados por la vista)
+        submit = driver.find_element(By.XPATH, "//button[@type='submit'] | //input[@type='submit']")
+        driver.execute_script("arguments[0].click();", submit)
         
-        # Descripción: Es un TEXTAREA, el selector XPath es correcto para evitar <meta>
-        desc_field = driver.find_element(By.XPATH, "//textarea[@name='description']")
-        logo_input = driver.find_element(By.NAME, "logo")
+        WebDriverWait(driver, 10).until(lambda d: "/community/" in d.current_url and "/create" not in d.current_url)
+        community_id = driver.current_url.split('?')[0].rstrip('/').split('/')[-1]
 
-        name_field.send_keys("Selenium Community")
-        desc_field.send_keys("Creada por Selenium test")
+        # --- PASO 3: ASOCIAR DATASETS (INTENTO LENTO Y VISUAL) ---
+        print(f"Asociando a ID {community_id}...")
+        driver.get(f"{host}/community/{community_id}/manage_datasets")
+        wait_for_page_to_load(driver)
+        
+        # Pausa para asegurar carga total de scripts
+        time.sleep(1)
 
-        file_path = os.path.abspath("app/modules/dataset/tests/test_files/test_logo.png")
-        logo_input.send_keys(file_path)
+        # Seleccionar opción
+        select = Select(driver.find_element(By.NAME, "datasets"))
+        select.select_by_index(0)
+        dataset_name = select.options[0].text.strip()
+        print(f"Seleccionado: {dataset_name}")
+        
+        # Pausa humana
+        time.sleep(0.5)
 
+        # Clic en Guardar
+        submit_btn = driver.find_element(By.ID, "submit") # Usamos ID porque lo vi en tu HTML
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", submit_btn)
+        time.sleep(0.5)
+        
+        print("Haciendo clic en Guardar...")
+        submit_btn.click()
 
-        # 4. ENVIAR FORMULARIO (Esperando el botón)
+        # Esperar redirección
         try:
-            # Selector más robusto para <button type="submit"> o <input type="submit">
-            submit_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[@type='submit'] | //input[@type='submit']"))
-            )
-        except Exception as e:
-            # Si esto falla, el botón NO se está renderizando debido a una validación pendiente del logo.
-            print(f"Error: El botón de envío no se pudo hacer clic. URL: {driver.current_url}")
-            raise e
+            WebDriverWait(driver, 5).until(lambda d: "manage_datasets" not in d.current_url)
+        except:
+            print("❌ Falló. El formulario se recargó.")
+            # Imprimir si hay algún error oculto en el HTML
+            if "csrf_token" in driver.page_source:
+                print("El token CSRF sigue ahí, lo que confirma recarga.")
+            
+            # BUSCAR ERRORES ESPECÍFICOS DE FLASK-WTF
+            # A veces los errores no tienen clase 'invalid-feedback' sino que son listas <ul>
+            errors = driver.find_elements(By.XPATH, "//ul[contains(@class, 'errors')]/li")
+            if errors:
+                print("ERRORES ENCONTRADOS:")
+                for e in errors: print(f"- {e.text}")
+            
+            raise Exception("No se pudo asociar el dataset.")
 
-        submit_btn.click() 
-
-        # 5. COMPROBACIÓN POST-SUBMISIÓN
-        WebDriverWait(driver, 10).until(EC.url_contains("/community/"))
-        assert "/community/" in driver.current_url
+        # VERIFICAR
+        print("Verificando...")
+        wait_for_page_to_load(driver)
+        assert community_name in driver.page_source
+        clean_name = dataset_name.split('(')[0].strip()
+        assert clean_name in driver.page_source
+        
+        print("¡ÉXITO!")
 
     finally:
+        if os.path.exists(logo_path): os.remove(logo_path)
         close_driver(driver)
