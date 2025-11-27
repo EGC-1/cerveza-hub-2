@@ -89,19 +89,6 @@ var currentId = 0;
         });
 
 
-        document.addEventListener('click', function (event) {
-            if (event.target && event.target.classList.contains('add_author_to_uvl')) {
-
-                let authorsButtonId = event.target.id;
-                let authorsId = authorsButtonId.replace("_button", "");
-                let authors = document.getElementById(authorsId);
-                let id = authorsId.replace("_form_authors", "")
-                let newAuthor = createAuthorBlock(amount_authors, `feature_models-${id}-`);
-                authors.appendChild(newAuthor);
-
-            }
-        });
-
         function show_loading() {
             document.getElementById("upload_button").style.display = "none";
             document.getElementById("loading").style.display = "block";
@@ -130,10 +117,10 @@ var currentId = 0;
 
         window.onload = function () {
 
-            test_zenodo_connection();
+            //test_zenodo_connection();
 
             document.getElementById('upload_button').addEventListener('click', function () {
-
+                e.preventDefault();
                 clean_upload_errors();
                 show_loading();
 
@@ -141,96 +128,88 @@ var currentId = 0;
                 let check = check_title_and_description();
 
                 if (check) {
-                    // process data form
-                    const formData = {};
+            // procesar datos del formulario
+            const form = document.getElementById("basic_info_form");
+            // Nota: Aquí solo necesitamos el formulario principal ('basic_info_form')
+            // ya que 'uploaded_models_form' ya no existe.
+            const formUploadData = new FormData(form);
+            
+            // Añadir el token CSRF si no está ya en el formulario
+            const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : null;
+            if (csrfToken) {
+                formUploadData.set('csrf_token', csrfToken);
+            }
 
-                    ["basic_info_form", "uploaded_models_form"].forEach((formId) => {
-                        const form = document.getElementById(formId);
-                        const inputs = form.querySelectorAll('input, select, textarea');
-                        inputs.forEach(input => {
-                            if (input.name) {
-                                formData[input.name] = formData[input.name] || [];
-                                formData[input.name].push(input.value);
-                            }
-                        });
-                    });
+            // Realizar validación JavaScript de ORCID y Nombre
+            // (La validación de Name en el backend por WTForms es mejor, pero mantenemos esta JS por consistencia)
+            
+            let checked_orcid = true;
+            let checked_name = true;
 
-                    let formDataJson = JSON.stringify(formData);
-                    console.log(formDataJson);
-
-                    const csrfToken = document.getElementById('csrf_token').value;
-                    const formUploadData = new FormData();
-                    formUploadData.append('csrf_token', csrfToken);
-
-                    for (let key in formData) {
-                        if (formData.hasOwnProperty(key)) {
-                            formUploadData.set(key, formData[key]);
-                        }
-                    }
-
-                    let checked_orcid = true;
-                    if (Array.isArray(formData.author_orcid)) {
-                        for (let orcid of formData.author_orcid) {
-                            orcid = orcid.trim();
-                            if (orcid !== '' && !isValidOrcid(orcid)) {
+            // Recoger los valores de los autores añadidos dinámicamente
+            const authorInputs = document.querySelectorAll('#authors .author input[name$="-orcid"]');
+            
+            authorInputs.forEach(input => {
+                const orcid = input.value.trim();
+                if (orcid !== '' && !isValidOrcid(orcid)) {
+                    write_upload_error("ORCID value does not conform to valid format: " + orcid);
+                    checked_orcid = false;
+                }
+            });
+            
+            const authorNameInputs = document.querySelectorAll('#authors .author input[name$="-name"]');
+            
+            authorNameInputs.forEach(input => {
+                const name = input.value.trim();
+                if (name === '') {
+                    write_upload_error("The author's name cannot be empty");
+                    checked_name = false;
+                }
+            });
+            
+            // Si la validación JS es exitosa, se procede al envío
+            if (checked_orcid && checked_name) {
+                fetch('/dataset/upload', {
+                    method: 'POST',
+                    body: formUploadData
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            console.log('Dataset sent successfully');
+                            response.json().then(data => {
+                                console.log(data.message);
+                                // Redirigir a la lista de datasets
+                                window.location.href = "/dataset/list";
+                            });
+                        } else {
+                            response.json().then(data => {
+                                console.error('Error: ' + data.message);
                                 hide_loading();
-                                write_upload_error("ORCID value does not conform to valid format: " + orcid);
-                                checked_orcid = false;
-                                break;
-                            }
-                        }
-                    }
-
-
-                    let checked_name = true;
-                    if (Array.isArray(formData.author_name)) {
-                        for (let name of formData.author_name) {
-                            name = name.trim();
-                            if (name === '') {
-                                hide_loading();
-                                write_upload_error("The author's name cannot be empty");
-                                checked_name = false;
-                                break;
-                            }
-                        }
-                    }
-
-
-                    if (checked_orcid && checked_name) {
-                        fetch('/dataset/upload', {
-                            method: 'POST',
-                            body: formUploadData
-                        })
-                            .then(response => {
-                                if (response.ok) {
-                                    console.log('Dataset sent successfully');
-                                    response.json().then(data => {
-                                        console.log(data.message);
-                                        window.location.href = "/dataset/list";
-                                    });
-                                } else {
-                                    response.json().then(data => {
-                                        console.error('Error: ' + data.message);
-                                        hide_loading();
-
-                                        write_upload_error(data.message);
-
-                                    });
-                                }
+                                write_upload_error(data.message);
                             })
                             .catch(error => {
-                                console.error('Error in POST request:', error);
+                                console.error('Error parsing JSON response:', error);
+                                hide_loading();
+                                write_upload_error("An unknown error occurred on the server (could not parse response).");
                             });
-                    }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error in POST request:', error);
+                        hide_loading();
+                        write_upload_error("Network or connection error occurred.");
+                    });
+            } else {
+                hide_loading();
+            }
+
+        } else {
+            hide_loading();
+        }
 
 
-                } else {
-                    hide_loading();
-                }
-
-
-            });
-        };
+    });
+};
 
 
         function isValidOrcid(orcid) {
