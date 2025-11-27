@@ -4,7 +4,7 @@ import unidecode
 from sqlalchemy import any_, or_
 
 from app.modules.dataset.models import Author, DataSet, DSMetaData, PublicationType, Community
-from app.modules.featuremodel.models import FeatureModel, FMMetaData
+
 from core.repositories.BaseRepository import BaseRepository
 
 

@@ -18,12 +18,7 @@ from app.modules.dataset.repositories import (
     DSViewRecordRepository,
     CommunityRepository,
 )
-from app.modules.featuremodel.repositories import FeatureModelRepository, FMMetaDataRepository
-from app.modules.hubfile.repositories import (
-    HubfileDownloadRecordRepository,
-    HubfileRepository,
-    HubfileViewRecordRepository,
-)
+
 from core.services.BaseService import BaseService
 from werkzeug.utils import secure_filename
 
