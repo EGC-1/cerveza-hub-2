@@ -18,12 +18,7 @@ from app.modules.dataset.repositories import (
     DSViewRecordRepository,
     CommunityRepository,
 )
-from app.modules.featuremodel.repositories import FeatureModelRepository, FMMetaDataRepository
-from app.modules.hubfile.repositories import (
-    HubfileDownloadRecordRepository,
-    HubfileRepository,
-    HubfileViewRecordRepository,
-)
+
 from core.services.BaseService import BaseService
 from werkzeug.utils import secure_filename
 
@@ -87,29 +82,12 @@ def calculate_checksum_and_size(file_path):
 class DataSetService(BaseService):
     def __init__(self):
         super().__init__(DataSetRepository())
-        self.feature_model_repository = FeatureModelRepository()
         self.author_repository = AuthorRepository()
         self.dsmetadata_repository = DSMetaDataRepository()
-        self.fmmetadata_repository = FMMetaDataRepository()
         self.dsdownloadrecord_repository = DSDownloadRecordRepository()
-        self.hubfiledownloadrecord_repository = HubfileDownloadRecordRepository()
-        self.hubfilerepository = HubfileRepository()
         self.dsviewrecord_repostory = DSViewRecordRepository()
-        self.hubfileviewrecord_repository = HubfileViewRecordRepository()
 
-    def move_feature_models(self, dataset: DataSet):
-        current_user = AuthenticationService().get_authenticated_user()
-        source_dir = current_user.temp_folder()
-
-        working_dir = os.getenv("WORKING_DIR", "")
-        dest_dir = os.path.join(working_dir, "uploads", f"user_{current_user.id}", f"dataset_{dataset.id}")
-
-        os.makedirs(dest_dir, exist_ok=True)
-
-        for feature_model in dataset.feature_models:
-            uvl_filename = feature_model.fm_meta_data.uvl_filename
-            shutil.move(os.path.join(source_dir, uvl_filename), dest_dir)
-
+    
     def get_synchronized(self, current_user_id: int) -> DataSet:
         return self.repository.get_synchronized(current_user_id)
 
@@ -124,9 +102,6 @@ class DataSetService(BaseService):
 
     def count_synchronized_datasets(self):
         return self.repository.count_synchronized_datasets()
-
-    def count_feature_models(self):
-        return self.feature_model_service.count_feature_models()
 
     def count_authors(self) -> int:
         return self.author_repository.count()
@@ -147,39 +122,54 @@ class DataSetService(BaseService):
             "orcid": current_user.profile.orcid,
         }
         try:
+            # 1. Crear DSMetaData y Autores
             logger.info(f"Creating dsmetadata...: {form.get_dsmetadata()}")
             dsmetadata = self.dsmetadata_repository.create(**form.get_dsmetadata())
             for author_data in [main_author] + form.get_authors():
                 author = self.author_repository.create(commit=False, ds_meta_data_id=dsmetadata.id, **author_data)
                 dsmetadata.authors.append(author)
 
+            # 2. Crear DataSet (padre) y hacer flush para obtener el ID necesario para la carpeta
             dataset = self.create(commit=False, user_id=current_user.id, ds_meta_data_id=dsmetadata.id)
+            self.repository.session.flush()
 
-            for feature_model in form.feature_models:
-                uvl_filename = feature_model.uvl_filename.data
-                fmmetadata = self.fmmetadata_repository.create(commit=False, **feature_model.get_fmmetadata())
-                for author_data in feature_model.get_authors():
-                    author = self.author_repository.create(commit=False, fm_meta_data_id=fmmetadata.id, **author_data)
-                    fmmetadata.authors.append(author)
+            # 3. MANEJAR SUBIDA DE ARCHIVO CSV (NUEVA LÓGICA)
+            csv_file_data = form.csv_file.data
+            if csv_file_data and csv_file_data.filename:
+                
+                # Definir la ruta de almacenamiento
+                working_dir = os.getenv("WORKING_DIR", os.path.join(os.getcwd(), "tmp_uploads"))
+                dataset_upload_dir = os.path.join(working_dir, "datasets", str(dataset.id))
+                os.makedirs(dataset_upload_dir, exist_ok=True)
+                
+                # Asegurar el nombre del archivo y la ruta completa
+                filename = secure_filename(csv_file_data.filename)
+                csv_file_path = os.path.join(dataset_upload_dir, filename)
 
-                fm = self.feature_model_repository.create(
-                    commit=False, data_set_id=dataset.id, fm_meta_data_id=fmmetadata.id
-                )
+                # Guardar el archivo en el disco
+                csv_file_data.seek(0)
+                csv_file_data.save(csv_file_path)
+                
+                # Calcular Checksum y Tamaño
+                checksum, size = calculate_checksum_and_size(csv_file_path)
 
-                # associated files in feature model
-                file_path = os.path.join(current_user.temp_folder(), uvl_filename)
-                checksum, size = calculate_checksum_and_size(file_path)
+                # Actualizar el objeto DataSet con la metadata del archivo CSV
+                dataset.csv_file_path = csv_file_path
+                dataset.checksum = checksum
+                dataset.size = size
+                # Se establece el nombre del dataset basado en el nombre del archivo subido
+                dataset.name = filename 
+            # FIN MANEJO CSV
 
-                file = self.hubfilerepository.create(
-                    commit=False, name=uvl_filename, checksum=checksum, size=size, feature_model_id=fm.id
-                )
-                fm.files.append(file)
             self.repository.session.commit()
         except Exception as exc:
             logger.info(f"Exception creating dataset from form...: {exc}")
+            # Si la subida falla, limpiamos la sesión
             self.repository.session.rollback()
+            # para no registrar el dataset en la DB.
             raise exc
         return dataset
+
 
     def update_dsmetadata(self, id, **kwargs):
         return self.dsmetadata_repository.update(id, **kwargs)

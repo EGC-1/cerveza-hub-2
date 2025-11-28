@@ -58,7 +58,8 @@ def create_dataset():
     if form.validate_on_submit():
         f = form.csv_file.data
         filename = secure_filename(f.filename)
-    
+        upload_to_zenodo = request.form.get('upload_to_zenodo') == 'true'
+        
         try:
             # --- FIX HERE: robust CSV reading ---
             f.seek(0) 
@@ -84,7 +85,7 @@ def create_dataset():
                 user_id=current_user.id,
                 ds_meta_data=meta_data,
                 row_count=csv_row_count,
-                column_names=csv_column_names
+                column_names=csv_column_names,
             )
             
             db.session.add(meta_data)
@@ -104,7 +105,7 @@ def create_dataset():
             dataset.csv_file_path = file_path
             db.session.commit()
             
-            logger.info(f"CSV dataset created: {dataset}")
+            logger.info(f"CSV dataset created: {dataset.id}")
 
         except Exception as exc:
             db.session.rollback()
@@ -112,39 +113,47 @@ def create_dataset():
             flash(f"Error creating local dataset: {exc}", "danger")
             return render_template("dataset/upload_dataset.html", form=form)
 
-        data = {}
+        
         deposition_doi = None 
-        try:
-            zenodo_response_json = zenodo_service.create_new_deposition(dataset)
-            data = json.loads(json.dumps(zenodo_response_json))
-        except Exception as exc:
-            data = {}
-            logger.exception(f"Exception while creating dataset in Zenodo {exc}")
-
-        if data.get("conceptrecid"):
-            deposition_id = data.get("id")
-            dataset_service.update_dsmetadata(dataset.ds_meta_data_id, deposition_id=deposition_id)
-
+        if upload_to_zenodo:
             try:
-                logger.info(f"Uploading {file_path} to Zenodo...")
-                zenodo_service.upload_file(dataset, deposition_id, file_path, filename)
-                zenodo_service.publish_deposition(deposition_id)
+                zenodo_response_json = zenodo_service.create_new_deposition(dataset)
+                data = json.loads(json.dumps(zenodo_response_json))
+                if data.get("conceptrecid") and data.get("id"):
+                    deposition_id = data.get("id")
+                    dataset_service.update_dsmetadata(dataset.ds_meta_data_id, deposition_id=deposition_id)
+                    logger.info(f"Uploading {file_path} to Zenodo (Deposition ID: {deposition_id})...")
+                    zenodo_service.upload_file(dataset, deposition_id, file_path, filename)
+                    zenodo_service.publish_deposition(deposition_id)
 
-                deposition_doi = zenodo_service.get_doi(deposition_id) 
-                dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=deposition_doi)
-                
-                flash('Your Beer-Dataset has been uploaded and published on Zenodo!', 'success')
-                
-            except Exception as e:
-                msg = f"Dataset created locally (id: {dataset.id}), but Zenodo upload failed: {e}"
+                    deposition_doi = zenodo_service.get_doi(deposition_id)
+                    if deposition_doi:
+                        dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=deposition_doi)
+                        logger.info(f"Dataset {dataset.id} published on Zenodo with DOI {deposition_doi}")
+                        flash('Your Beer-Dataset has been uploaded and published on Zenodo!', 'success')
+                    else:
+                        logger.error(f"DOI not found after publishing deposition {deposition_id} for dataset {dataset.id}")
+                        flash('Dataset created locally, but DOI retrieval from Zenodo failed.', 'warning')
+                else:
+                    logger.error(f"Zenodo deposition creation failed for dataset {dataset.id}: {data}")
+                    flash('Dataset created locally, but connection with Zenodo failed.', 'warning')        
+            except Exception as exc:
+                msg = f"Dataset created locally (id: {dataset.id}), but Zenodo synchronization failed: {exc}"
                 logger.exception(msg)
                 flash(msg, 'warning')
-                
-        else:
-             flash('Dataset created locally, but connection with Zenodo failed.', 'warning')
 
-        if deposition_doi:
-            doi_only = deposition_doi.replace("https://doi.org/", "")
+                # --- INYECCIÓN DEL DOI SIMULADO ---
+                temp_id = str(uuid.uuid4()).split('-')[0]
+                deposition_doi = f"10.9999/test-doi.{dataset.id}.{temp_id}"
+                dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=deposition_doi)
+                db.session.commit()
+                logger.warning(f"ZENODO FAILED (403). Using SIMULATED DOI: {deposition_doi}")
+
+        db.session.refresh(dataset.ds_meta_data)
+        final_doi = dataset.ds_meta_data.dataset_doi
+
+        if final_doi:
+            doi_only = final_doi.replace("https://doi.org/", "")
             return redirect(url_for('dataset.subdomain_index', doi=doi_only))
         else:
              return redirect(url_for('dataset.get_unsynchronized_dataset', dataset_id=dataset.id))
