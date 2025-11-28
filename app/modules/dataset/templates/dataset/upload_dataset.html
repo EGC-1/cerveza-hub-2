@@ -4,14 +4,14 @@
 
 {% block content %}
 
-    <h1 class="h2 mb-3"><b>Upload</b> dataset</h1>
+    <h1 class="h2 mb-4"><b><i class="align-middle me-2" data-feather="upload-cloud"></i> Upload</b> Dataset</h1>
 
     <div class="row">
         <div class="col-12 mb-3">
             <div class="alert alert-warning" role="alert" id="test_zenodo_connection_error" style="display: none">
                 <div class="alert-message">
-                    <h4 class="alert-heading"><i class="align-middle" data-feather="alert-triangle"></i> Limited
-                        connection to the Zenodo API</h4>
+                    <h4 class="alert-heading"><i class="align-middle me-2" data-feather="alert-triangle"></i> Limited
+                        Connection to Zenodo API</h4>
                     <p class="p-0 m-0">
                         There seems to be some kind of problem with the Zenodo API and synchronization of your dataset
                         files may not be possible. We will save your files locally to eventually synchronize them with
@@ -23,10 +23,11 @@
         </div>
     </div>
 
+    {# Bloque de mensajes Flash #}
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible" role="alert">
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
                     <div class="alert-message">
                         {{ message }}
                     </div>
@@ -35,156 +36,196 @@
             {% endfor %}
         {% endif %}
     {% endwith %}
+    {# Fin de mensajes Flash #}
 
+    <form method="POST" action="{{ url_for('dataset.create_dataset') }}" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
 
-    <div class="row">
-        <div class="col-12">
+        <div class="row">
             
-            <form method="POST" action="{{ url_for('dataset.create_dataset') }}" enctype="multipart/form-data">
-                {{ form.hidden_tag() }}
-
-                <div class="card">
+            {# ========================================== #}
+            {# SECCIÓN: INFORMACIÓN BÁSICA #}
+            {# ========================================== #}
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="align-middle me-2" data-feather="info"></i> Basic Information</h3>
+                    </div>
                     <div class="card-body">
                         
-                        <h1 class="h3 mb-3">Basic info</h1>
-                        <div class="row" style="padding-left: 2rem">
-                            <div class="col-lg-6 col-xs-12 col-md-12">
-                                <div class="mb-3">
-                                    {{ form.title.label(class="form-label") }} *
-                                    {{ form.title(class="form-control") }}
-                                    {% for error in form.title.errors %}
-                                        <span style="color: red;">{{ error }}</span>
-                                    {% endfor %}
-                                </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                {{ form.title.label(class="form-label") }} <span class="text-danger">*</span>
+                                {{ form.title(class="form-control") }}
+                                {% for error in form.title.errors %}
+                                    <span class="text-danger">{{ error }}</span>
+                                {% endfor %}
                             </div>
-                            <div class="col-12">
-                                <div class="mb-3">
-                                    {{ form.desc.label(class="form-label") }} *
-                                    {{ form.desc(rows=4, class="form-control") }}
-                                    {% for error in form.desc.errors %}
-                                        <span style="color: red;">{{ error }}</span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <div class="col-lg-6 col-6">
-                                <div class="mb-3">
-                                    {{ form.publication_type.label(class="form-label") }}
-                                    {{ form.publication_type(class="form-control") }}
-                                </div>
-                            </div>
-                            <div class="col-lg-6 col-6">
-                                <div class="mb-3">
-                                    {{ form.publication_doi.label(class="form-label") }}
-                                    {{ form.publication_doi(class="form-control") }}
-                                    {% for error in form.publication_doi.errors %}
-                                        <span style="color: red;">{{ error }}</span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="mb-3">
-                                    {{ form.tags.label(class="form-label") }}
-                                    {{ form.tags(class="form-control") }}
-                                    {% for error in form.tags.errors %}
-                                        <span style="color: red;">{{ error }}</span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
 
-                        <h1 class="h3 mb-3 mt-4">Authors</h1>
-
-                        <div class="alert alert-warning mt-3" role="alert">
-                            <strong>Warning!</strong> Authors cannot be edited once the dataset has been uploaded to CervezaHub.
-                        </div>
-
-                        <div class="row" style="padding-left: 2rem">
-                            <div class="col-12">
-                                <div class="mb-3">
-                                    <div id="authors">
-                                        {% for subform in form.authors %}
-                                        <div class="row author" {% if not loop.first %}
-                                            style="border:2px dotted #ccc;border-radius:10px;padding:10px;margin:10px 0; background-color: white"
-                                            {% endif %}
-                                        >
-                                            <div class="col-lg-6 col-12 mb-3">
-                                                {{ subform.form.name.label(class="form-label") }}
-                                                {% if loop.first %}
-                                                    {{ subform.form.name(class="form-control", readonly=True, value=(current_user.profile.surname or '') ~ ", " ~ (current_user.profile.name or ''), style="color: black; background-color: #e9ecef;") }}
-                                                {% else %}
-                                                    {{ subform.form.name(class="form-control") }}
-                                                {% endif %}
-                                                {% for error in subform.form.name.errors %}
-                                                    <span style="color: red;">{{ error }}</span>
-                                                {% endfor %}
-                                            </div>
-                                            <div class="col-lg-6 col-12 mb-3">
-                                                {{ subform.form.affiliation.label(class="form-label") }}
-                                                {% if loop.first %}
-                                                    {{ subform.form.affiliation(class="form-control", readonly=True, value=current_user.profile.affiliation or 'Not specified', style="color: black; background-color: #e9ecef;") }}
-                                                {% else %}
-                                                    {{ subform.form.affiliation(class="form-control") }}
-                                                {% endif %}
-                                                {% for error in subform.form.affiliation.errors %}
-                                                    <span style="color: red;">{{ error }}</span>
-                                                {% endfor %}
-                                            </div>
-                                            <div class="col-lg-6 col-12 mb-3">
-                                                {{ subform.form.orcid.label(class="form-label") }}
-                                                {% if loop.first %}
-                                                    {{ subform.form.orcid(class="form-control", readonly=True, value=current_user.profile.orcid or 'Not specified', style="color: black; background-color: #e9ecef;") }}
-                                                {% else %}
-                                                    {{ subform.form.orcid(class="form-control") }}
-                                                {% endif %}
-                                                {% for error in subform.form.orcid.errors %}
-                                                    <span style="color: red;">{{ error }}</span>
-                                                {% endfor %}
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                    <button type="button" class="btn btn-secondary" id="add_author">Add author</button>
-                                </div>
+                            <div class="col-12 mb-3">
+                                {{ form.desc.label(class="form-label") }} <span class="text-danger">*</span>
+                                {{ form.desc(rows=4, class="form-control") }}
+                                {% for error in form.desc.errors %}
+                                    <span class="text-danger">{{ error }}</span>
+                                {% endfor %}
                             </div>
-                        </div>
-                        
-                        <h1 class="h3 mb-3 mt-4">CSV file</h1>
-                        <div class="row" style="padding-left: 2rem">
-                            <div class="col-12">
-                                <div class="mb-3">
-                                    {{ form.csv_file.label(class="form-label") }} *
-                                    {{ form.csv_file(class="form-control") }}
-                                    {% for error in form.csv_file.errors %}
-                                        <span style="color: red;">{{ error }}</span>
-                                    {% endfor %}
-                                </div>
+
+                            <div class="col-lg-6 col-md-6 mb-3">
+                                {{ form.publication_type.label(class="form-label") }}
+                                {{ form.publication_type(class="form-control") }}
                             </div>
-                        </div>
-
-                        <hr>
-                        <div style="padding-left: 2rem">
-                            <label class="form-check">
-                                <input id="agreeCheckbox" class="form-check-input" type="checkbox" value="">
-                                <span class="form-check-label" style="font-size: 15px">
-                                    I agree to have my CSV dataset automatically uploaded to Zenodo and made available to the public according to the <a
-                                        href="https://en.wikipedia.org/wiki/Open_science" target="_blank">Open Science</a> manifesto
-                                </span>
-                            </label>
-
-                            {{ form.submit(class="btn btn-primary mt-2", id="upload_button", disabled=True) }}
                             
-                            <div id="loading" style="display: none">
-                                <img width="40px" src="{{ url_for("static", filename="gifs/loading.svg") }}"/>
-                                Uploading dataset, please wait...
+                            {# ELIMINADO: form.publication_doi (Related Publication) #}
+                            
+                            <div class="col-lg-6 col-md-6 mb-3">
+                                {{ form.tags.label(class="form-label") }}
+                                {{ form.tags(class="form-control", placeholder="e.g. beer, abv, ibu, data science") }}
+                                {% for error in form.tags.errors %}
+                                    <span class="text-danger">{{ error }}</span>
+                                {% endfor %}
                             </div>
                         </div>
-                        
+
                     </div>
                 </div>
-            </form>
+            </div>
+
+            {# ========================================== #}
+            {# SECCIÓN: ACTIVACIÓN ZENODO #}
+            {# ========================================== #}
+            <div class="col-lg-4">
+                <div class="card mb-4 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="card-title mb-0"><i class="align-middle me-2" data-feather="cloud-lightning"></i> Zenodo Publishing</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">
+                            Enable this option to automatically generate a permanent **DOI** for your dataset on Zenodo, ensuring maximum visibility and citation.
+                            <hr class="my-3">
+                        </p>
+                        
+                        {# Botón/Checkbox de activación #}
+                        <div class="form-check">
+                            <input id="agreeCheckbox" class="form-check-input" type="checkbox" name="upload_to_zenodo" value="true">
+                            <label class="form-check-label" for="agreeCheckbox" style="font-size: 15px">
+                                **Use Zenodo** (Create DOI and publish dataset)
+                            </label>
+                            <small class="text-muted d-block mt-2">
+                                By checking this, you agree to public open access under a **CC BY 4.0 license** on Zenodo.
+                            </small>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        {# ========================================== #}
+        {# SECCIÓN: AUTORES #}
+        {# ========================================== #}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title"><i class="align-middle me-2" data-feather="users"></i> Authors</h3>
+            </div>
+            <div class="card-body">
+
+                <div class="alert alert-warning" role="alert">
+                    <i class="align-middle me-2" data-feather="alert-triangle"></i>
+                    <strong>Warning!</strong> Authors cannot be edited once the dataset has been uploaded to CervezaHub.
+                </div>
+
+                <div id="authors">
+                    {% for subform in form.authors %}
+                    <div class="row author mb-3 p-3 border rounded" style="background-color: #f8f9fa;">
+                        
+                        {# Campo Nombre/Name #}
+                        <div class="col-lg-6 col-12 mb-3">
+                            {{ subform.form.name.label(class="form-label") }}
+                            {% if loop.first %}
+                                {{ subform.form.name(class="form-control bg-light", readonly=True, value=(current_user.profile.surname or '') ~ ", " ~ (current_user.profile.name or '')) }}
+                            {% else %}
+                                {{ subform.form.name(class="form-control") }}
+                            {% endif %}
+                            {% for error in subform.form.name.errors %}
+                                <span class="text-danger">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+
+                        {# Campo Afiliación/Affiliation #}
+                        <div class="col-lg-6 col-12 mb-3">
+                            {{ subform.form.affiliation.label(class="form-label") }}
+                            {% if loop.first %}
+                                {{ subform.form.affiliation(class="form-control bg-light", readonly=True, value=current_user.profile.affiliation or 'Not specified') }}
+                            {% else %}
+                                {{ subform.form.affiliation(class="form-control") }}
+                            {% endif %}
+                            {% for error in subform.form.affiliation.errors %}
+                                <span class="text-danger">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+
+                        {# Campo ORCID #}
+                        <div class="col-lg-6 col-12 mb-3">
+                            {{ subform.form.orcid.label(class="form-label") }}
+                            {% if loop.first %}
+                                {{ subform.form.orcid(class="form-control bg-light", readonly=True, value=current_user.profile.orcid or 'Not specified') }}
+                            {% else %}
+                                {{ subform.form.orcid(class="form-control") }}
+                            {% endif %}
+                            {% for error in subform.form.orcid.errors %}
+                                <span class="text-danger">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                        
+                        {# Botón de Eliminar para autores adicionales #}
+                        {% if not loop.first %}
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="button" class="btn btn-sm btn-danger remove-author">Remove Author</button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <button type="button" class="btn btn-secondary mt-2" id="add_author"><i class="align-middle me-2" data-feather="plus"></i> Add Author</button>
+            </div>
+        </div>
+        
+        {# ========================================== #}
+        {# SECCIÓN: ARCHIVO CSV #}
+        {# ========================================== #}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title"><i class="align-middle me-2" data-feather="database"></i> Dataset CSV File</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    {{ form.csv_file.label(class="form-label") }} <span class="text-danger">*</span>
+                    {{ form.csv_file(class="form-control") }}
+                    {% for error in form.csv_file.errors %}
+                        <span class="text-danger">{{ error }}</span>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
 
+        {# ========================================== #}
+        {# SECCIÓN: TÉRMINOS Y ENVÍO #}
+        {# ========================================== #}
+        <hr class="mt-4 mb-4">
+        
+        <div class="d-flex flex-column align-items-start">
+            
+            {{ form.submit(class="btn btn-primary mt-3", id="upload_button", disabled=True) }}
+            
+            <div id="loading" style="display: none" class="mt-2">
+                <img width="40px" src="{{ url_for("static", filename="gifs/loading.svg") }}"/>
+                Uploading dataset, please wait...
+            </div>
         </div>
+        
+    </form>
 
 {% endblock %}
 
@@ -194,15 +235,19 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const checkbox = document.getElementById('agreeCheckbox');
+            const checkbox = document.getElementById('agreeCheckbox'); 
             const upload_button = document.getElementById('upload_button');
             const form = document.querySelector('form');
             const loadingDiv = document.getElementById('loading');
             
             if (checkbox && upload_button) {
+                // El botón de subir SÓLO se activa si se marca la casilla de Zenodo.
                 checkbox.addEventListener('change', function () {
                     upload_button.disabled = !checkbox.checked;
                 });
+                
+                // Inicialmente deshabilitado si no está marcado
+                upload_button.disabled = !checkbox.checked;
             }
             
             // Show "loading" when submitting
@@ -210,6 +255,16 @@
                 form.addEventListener('submit', function() {
                     upload_button.disabled = true;
                     loadingDiv.style.display = 'block';
+                });
+            }
+            
+            // Lógica para eliminar autores dinámicamente
+            const authorsDiv = document.getElementById('authors');
+            if (authorsDiv) {
+                 authorsDiv.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('remove-author')) {
+                        e.target.closest('.author').remove();
+                    }
                 });
             }
         });
