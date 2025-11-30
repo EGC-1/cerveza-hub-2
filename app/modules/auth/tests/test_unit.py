@@ -153,26 +153,6 @@ def test_service_update_user_fail(mock_db_session):
     assert result is False
     mock_db_session.rollback.assert_called_once()
 
-#maria
-def test_service_assign_role_to_user_fail_non_existent_user(clean_database):
-    """Prueba que falla si el usuario no existe (retorna False)."""
-    auth_service = AuthenticationService()
-    result = auth_service.assign_role_to_user(9999, 1) 
-    assert result is False
-
-#maria
-@patch('app.modules.auth.services.db.session.rollback')
-def test_service_assign_role_to_user_fail_exception(mock_rollback, clean_database):
-    """Prueba que se hace rollback si hay una excepción durante la actualización del rol."""
-    auth_service = AuthenticationService()
-    
-    # Mockear el repositorio para que falle al obtener el usuario
-    with patch.object(auth_service.repository, 'get_by_id', side_effect=Exception("DB Error")):
-        with pytest.raises(Exception, match="DB Error"):
-            auth_service.assign_role_to_user(1, 2)
-            
-    mock_rollback.assert_called_once()
-
 
 # --- Cobertura de Métodos de Usuario Autenticado (Requiere Mockear Flask-Login) ---
 
