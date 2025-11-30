@@ -1,7 +1,7 @@
+import datetime
 import pytest
 from flask import url_for
 
-# Nuevas importaciones necesarias para los tests de servicio
 from app import db 
 from app.modules.auth.models import Role, User 
 from unittest.mock import patch, MagicMock
@@ -153,14 +153,14 @@ def test_service_update_user_fail(mock_db_session):
     assert result is False
     mock_db_session.rollback.assert_called_once()
 
-
+#maria
 def test_service_assign_role_to_user_fail_non_existent_user(clean_database):
     """Prueba que falla si el usuario no existe (retorna False)."""
     auth_service = AuthenticationService()
     result = auth_service.assign_role_to_user(9999, 1) 
     assert result is False
 
-
+#maria
 @patch('app.modules.auth.services.db.session.rollback')
 def test_service_assign_role_to_user_fail_exception(mock_rollback, clean_database):
     """Prueba que se hace rollback si hay una excepción durante la actualización del rol."""
@@ -295,3 +295,145 @@ def test_send_password_reset_email_failure_rollback(mock_db_session, mock_curren
     assert result is False
     mock_db_session.rollback.assert_called_once()
     mock_current_app.logger.error.assert_called_once()
+
+
+
+
+
+
+
+
+
+
+
+    
+
+MOCK_TOKEN = 'a' * 64
+
+@patch('app.modules.auth.models.secrets.token_hex', return_value=MOCK_TOKEN)
+@patch('app.modules.auth.models.datetime')
+def test_generate_reset_token_success(mock_datetime, mock_token_hex):
+    """
+    Prueba que generate_reset_token establece el token y la expiración 
+    (1 hora en el futuro) en el objeto User.
+    """
+    # 1. Mock Time: Definimos la hora 'actual' para el test
+    now = datetime.datetime(2025, 1, 1, 10, 0, 0)
+    mock_datetime.utcnow.return_value = now
+    
+    user = User()
+    
+    # 2. Ejecución
+    token = user.generate_reset_token()
+    expected_expiration = datetime.datetime(2025, 1, 1, 11, 0, 0) # 1 hora después
+    
+    # 3. Asertos
+    assert token == MOCK_TOKEN
+    assert user.reset_token == MOCK_TOKEN
+    assert user.token_expiration == expected_expiration
+    mock_token_hex.assert_called_once_with(32)
+
+
+@patch('app.modules.auth.models.datetime')
+@patch('app.modules.auth.models.User.query')
+@patch('app.modules.auth.models.db.session')
+def test_verify_reset_token_valid(mock_db_session, mock_query, mock_datetime):
+    """
+    Prueba que verify_reset_token retorna el usuario si el token es válido y no ha expirado.
+    """
+    VALID_TOKEN = 'valid_token'
+    
+    # 1. Mock Time (Activo)
+    now = datetime.datetime(2025, 1, 1, 10, 30, 0)
+    mock_datetime.utcnow.return_value = now
+    
+    # 2. Mock User: expira 5 min en el futuro (activo)
+    mock_user = MagicMock(spec=User)
+    mock_user.token_expiration = now + datetime.timedelta(minutes=5)
+    
+    mock_query.filter_by.return_value.first.return_value = mock_user
+
+    # 3. Ejecución
+    user = User.verify_reset_token(VALID_TOKEN)
+
+    # 4. Asertos
+    assert user is mock_user
+    mock_db_session.commit.assert_not_called()
+
+
+@patch('app.modules.auth.models.User.query')
+def test_verify_reset_token_not_found(mock_query):
+    """
+    Prueba que verify_reset_token retorna None si el token no se encuentra en la base de datos.
+    """
+    # 1. Mock Query: retorna None
+    mock_query.filter_by.return_value.first.return_value = None
+
+    # 2. Ejecución
+    user = User.verify_reset_token('non_existent_token')
+
+    # 3. Asertos
+    assert user is None
+
+
+@patch('app.modules.auth.models.datetime')
+@patch('app.modules.auth.models.User.query')
+@patch('app.modules.auth.models.db.session')
+def test_verify_reset_token_expired(mock_db_session, mock_query, mock_datetime):
+    """
+    Prueba que retorna None, limpia los campos del usuario y hace commit si el token expiró.
+    """
+    EXPIRED_TOKEN = 'expired_token'
+    
+    # 1. Mock Time (Expirado)
+    now = datetime.datetime(2025, 1, 1, 10, 30, 0)
+    mock_datetime.utcnow.return_value = now
+    
+    # 2. Mock User: expiró 5 min antes
+    mock_user = MagicMock(spec=User)
+    mock_user.reset_token = EXPIRED_TOKEN
+    mock_user.token_expiration = now - datetime.timedelta(minutes=5) 
+    
+    mock_query.filter_by.return_value.first.return_value = mock_user
+
+    # 3. Ejecución
+    user = User.verify_reset_token(EXPIRED_TOKEN)
+
+    # 4. Asertos
+    assert user is None
+    # Verifica que los campos fueron limpiados
+    assert mock_user.reset_token is None
+    assert mock_user.token_expiration is None
+    # Verifica que se hizo commit de la limpieza
+    mock_db_session.commit.assert_called_once()
+    
+@patch('app.modules.auth.models.datetime')
+@patch('app.modules.auth.models.User.query')
+@patch('app.modules.auth.models.db.session')
+def test_verify_reset_token_no_expiration(mock_db_session, mock_query, mock_datetime):
+    """
+    Prueba que retorna None, limpia los campos del usuario y hace commit si 
+    token_expiration es None (tratado como expirado).
+    """
+    INCONSISTENT_TOKEN = 'inconsistent_token'
+    
+    # 1. Mock Time 
+    mock_datetime.utcnow.return_value = datetime.datetime(2025, 1, 1, 10, 30, 0)
+    
+    # 2. Mock User: expiration es None
+    mock_user = MagicMock(spec=User)
+    mock_user.reset_token = INCONSISTENT_TOKEN
+    mock_user.token_expiration = None 
+    
+    mock_query.filter_by.return_value.first.return_value = mock_user
+
+    # 3. Ejecución
+    user = User.verify_reset_token(INCONSISTENT_TOKEN)
+
+    # 4. Asertos
+    assert user is None
+    # Verifica que los campos fueron limpiados
+    assert mock_user.reset_token is None
+    assert mock_user.token_expiration is None
+    # Verifica que se hizo commit de la limpieza
+    mock_db_session.commit.assert_called_once()
