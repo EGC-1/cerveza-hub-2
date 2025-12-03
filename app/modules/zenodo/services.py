@@ -36,9 +36,9 @@ class ZenodoService(BaseService):
     def __init__(self):
         super().__init__(ZenodoRepository())
         self.ZENODO_ACCESS_TOKEN = self.get_zenodo_access_token()
-        self.ZENODO_API_URL = self.get_zenodo_url()
+        self.ZENODO_API_URL = os.getenv("ZENODO_API_URL", "https://sandbox.zenodo.org/api/deposit/depositions")
         self.headers = {"Content-Type": "application/json"}
-        self.params = {"access_token": self.ZENODO_ACCESS_TOKEN}
+        self.params = {"access_token": os.getenv("ZENODO_ACCESS_TOKEN", "")}
 
     def test_connection(self) -> bool:
         """

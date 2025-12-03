@@ -49,7 +49,6 @@ doi_mapping_service = DOIMappingService()
 ds_view_record_service = DSViewRecordService()
 community_service = CommunityService()
 
-
 @dataset_bp.route("/dataset/upload", methods=["GET", "POST"])
 @login_required 
 def create_dataset():
@@ -61,7 +60,7 @@ def create_dataset():
         upload_to_zenodo = request.form.get('upload_to_zenodo') == 'true'
         
         try:
-            # --- FIX HERE: robust CSV reading ---
+            # --- MANTENEMOS TU LÓGICA DE CSV (ORIGINAL DE ahh.txt) ---
             f.seek(0) 
             try:
                 df = pd.read_csv(f, encoding='utf-8', sep=None, engine='python')
@@ -114,41 +113,60 @@ def create_dataset():
             return render_template("dataset/upload_dataset.html", form=form)
 
         
-        deposition_doi = None 
+        # --- AQUÍ EMPIEZAN LOS CAMBIOS BASADOS EN "ahh ellos.txt" ---
+        # Objetivo: Usar la lógica limpia que recupera el DOI directamente de la respuesta
+        # y eliminar el "hack" del DOI simulado manual.
+        
         if upload_to_zenodo:
             try:
+                # 1. Crear deposición (Igual que antes)
                 zenodo_response_json = zenodo_service.create_new_deposition(dataset)
                 data = json.loads(json.dumps(zenodo_response_json))
-                if data.get("conceptrecid") and data.get("id"):
+                
+                if data.get("id"):
                     deposition_id = data.get("id")
                     dataset_service.update_dsmetadata(dataset.ds_meta_data_id, deposition_id=deposition_id)
                     logger.info(f"Uploading {file_path} to Zenodo (Deposition ID: {deposition_id})...")
+                    
+                    # 2. Subir archivo (Mantenemos tu lógica de CSV, 'ellos' usaban feature models)
                     zenodo_service.upload_file(dataset, deposition_id, file_path, filename)
-                    zenodo_service.publish_deposition(deposition_id)
-
-                    deposition_doi = zenodo_service.get_doi(deposition_id)
-                    if deposition_doi:
-                        dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=deposition_doi)
-                        logger.info(f"Dataset {dataset.id} published on Zenodo with DOI {deposition_doi}")
-                        flash('Your Beer-Dataset has been uploaded and published on Zenodo!', 'success')
+                    
+                    # 3. Publicar y OBTENER DOI (Lógica traída de 'ahh ellos.txt' )
+                    # En lugar de llamar a get_doi() aparte, confiamos en la respuesta de publish
+                    zenodo_response = zenodo_service.publish_deposition(deposition_id)
+                    
+                    doi = zenodo_response.get("doi")
+                    
+                    if doi:
+                        dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=doi)
+                        logger.info(f"Dataset {dataset.id} published on Zenodo with DOI {doi}")
+                        flash('Your Dataset has been uploaded and published on Zenodo!', 'success')
                     else:
-                        logger.error(f"DOI not found after publishing deposition {deposition_id} for dataset {dataset.id}")
-                        flash('Dataset created locally, but DOI retrieval from Zenodo failed.', 'warning')
+                        # Fallback por si la respuesta no trae DOI (raro si es Zenodo/Fakenodo real)
+                        logger.error(f"DOI not found in publish response for deposition {deposition_id}")
+                        # Intentamos recuperarlo explícitamente como último recurso
+                        deposition_doi = zenodo_service.get_doi(deposition_id)
+                        if deposition_doi:
+                             dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=deposition_doi)
+                             flash('Your Dataset has been uploaded and published on Zenodo!', 'success')
+                        else:
+                             flash('Dataset created locally, but DOI retrieval from Zenodo failed.', 'warning')
+
                 else:
                     logger.error(f"Zenodo deposition creation failed for dataset {dataset.id}: {data}")
                     flash('Dataset created locally, but connection with Zenodo failed.', 'warning')        
+            
             except Exception as exc:
                 msg = f"Dataset created locally (id: {dataset.id}), but Zenodo synchronization failed: {exc}"
                 logger.exception(msg)
                 flash(msg, 'warning')
+                
+                # --- IMPORTANTE: HEMOS ELIMINADO EL BLOQUE DE "SIMULATED DOI" ---
+                # Tus compañeros no tenían el bloque que empezaba con:
+                # temp_id = str(uuid.uuid4()).split('-')[0] ...
+                # Porque ahora confían en que Fakenodo haga su trabajo.
 
-                # --- INYECCIÓN DEL DOI SIMULADO ---
-                temp_id = str(uuid.uuid4()).split('-')[0]
-                deposition_doi = f"10.9999/test-doi.{dataset.id}.{temp_id}"
-                dataset_service.update_dsmetadata(dataset.ds_meta_data_id, dataset_doi=deposition_doi)
-                db.session.commit()
-                logger.warning(f"ZENODO FAILED (403). Using SIMULATED DOI: {deposition_doi}")
-
+        # Refrescar para ver si tenemos DOI (ya sea real o de Fakenodo)
         db.session.refresh(dataset.ds_meta_data)
         final_doi = dataset.ds_meta_data.dataset_doi
 
@@ -159,7 +177,6 @@ def create_dataset():
              return redirect(url_for('dataset.get_unsynchronized_dataset', dataset_id=dataset.id))
         
     return render_template("dataset/upload_dataset.html", form=form)
-
 
 @dataset_bp.route("/dataset/list", methods=["GET", "POST"])
 @login_required
