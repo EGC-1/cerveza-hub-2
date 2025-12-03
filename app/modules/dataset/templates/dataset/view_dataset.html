@@ -92,6 +92,7 @@
                     </div>
                 </div>
                 {% endif %}
+                
                 {% if dataset.ds_meta_data.dataset_doi %}
                 <div class="row mb-2">
                     <div class="col-md-4 col-12">
@@ -105,13 +106,13 @@
                     </div>
                     {% elif FLASK_ENV == 'development' %}
                     <div class="col-md-8 col-12">
-                        <a href="https://sandbox.zenodo.org/records/{{ dataset.ds_meta_data.deposition_id }}" target="_blank">
-                            https://sandbox.zenodo.org/records/{{ dataset.ds_meta_data.deposition_id }}
+                        <a href="http://localhost:5000/api/deposit/depositions/{{ dataset.ds_meta_data.deposition_id }}" target="_blank">
+                            http://localhost:5000/api/deposit/depositions/{{ dataset.ds_meta_data.deposition_id }}
                         </a>
                     </div>
                     {% else %}
                     <div class="col-md-8 col-12">
-                        <a href="https://zenodo.org/records/{{ dataset.ds_meta_data.deposition_id }}" target="_blank">
+                        <a href="https://sandbox.zenodo.org/records/{{ dataset.ds_meta_data.deposition_id }}" target="_blank">
                             https://sandbox.zenodo.org/records/{{ dataset.ds_meta_data.deposition_id }}
                         </a>
                     </div>
@@ -156,11 +157,9 @@
             </div>
             <div class="card-body">
                 
-                <!-- --- CSV PREVIEW --- -->
                 {% if csv_header %}
-                    <div class="table-responsive"> <!-- Makes table responsive on mobile -->
+                    <div class="table-responsive">
                         <table class="table table-striped table-hover">
-                            <!-- 1. Draw Table Header -->
                             <thead>
                                 <tr>
                                     {% for col_name in csv_header %}
@@ -168,8 +167,6 @@
                                     {% endfor %}
                                 </tr>
                             </thead>
-                            
-                            <!-- 2. Draw Rows (first 10 from preview) -->
                             <tbody>
                                 {% for row in csv_preview %}
                                     <tr>
@@ -188,7 +185,6 @@
                     {% endif %}
                 
                 {% else %}
-                    <!-- Message if CSV doesn't exist or couldn't be read -->
                     <p class="text-muted">A data preview is not available for this dataset.</p>
                 {% endif %}
                 
@@ -227,7 +223,6 @@
 
     <div class="col-xl-4 col-lg-12 col-md-12 col-sm-12">
 
-        <!-- --- CSV FILE CARD (REPLACES UVL LIST) --- -->
         <div class="card">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">

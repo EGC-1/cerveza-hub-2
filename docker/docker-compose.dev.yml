@@ -4,6 +4,7 @@ services:
     env_file:
       - ../.env
     environment:
+      - FLASK_ENV=development
       - ZENODO_API_URL=http://fakenodo:5000/api/deposit/depositions
       - ZENODO_ACCESS_TOKEN=fake_token
     expose:
