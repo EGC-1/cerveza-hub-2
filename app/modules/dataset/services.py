@@ -21,8 +21,17 @@ from app.modules.dataset.repositories import (
 
 from core.services.BaseService import BaseService
 from werkzeug.utils import secure_filename
+import base64
+import logging
+import os
+from typing import Optional
+
+import requests
+
+from app.modules.dataset.models import DataSet
 
 logger = logging.getLogger(__name__)
+
 
 class CommunityService(BaseService):
     def __init__(self):
@@ -250,3 +259,92 @@ class SizeService:
             return f"{round(size / (1024 ** 2), 2)} MB"
         else:
             return f"{round(size / (1024 ** 3), 2)} GB"
+
+
+class GitHubService:
+    """
+    Servicio sencillo para subir el CSV de un dataset a un repositorio GitHub
+    usando la API REST (endpoint /repos/{owner}/{repo}/contents/{path}).
+    """
+
+    def __init__(self) -> None:
+        self.token: Optional[str] = os.getenv("GITHUB_TOKEN")
+        self.repo: Optional[str] = os.getenv("GITHUB_REPO")
+        self.branch: str = os.getenv("GITHUB_BRANCH", "main")
+        self.base_path: str = os.getenv("GITHUB_BASE_PATH", "datasets")
+        self.api_base: str = "https://api.github.com"
+
+        if not self.token or not self.repo:
+            logger.warning(
+                "GitHubService inicializado sin GITHUB_TOKEN o GITHUB_REPO. "
+                "Las subidas a GitHub fallarán hasta que se configuren."
+            )
+
+    def _headers(self) -> dict:
+        headers = {
+            "Accept": "application/vnd.github+json",
+        }
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        return headers
+
+    def upload_dataset_csv(self, dataset: DataSet) -> str:
+    
+        if not dataset.csv_file_path or not os.path.exists(dataset.csv_file_path):
+            raise FileNotFoundError("CSV file for this dataset not found.")
+
+        if not self.repo:
+            raise RuntimeError("GITHUB_REPO is not configured.")
+        if not self.token:
+            raise RuntimeError("GITHUB_TOKEN is not configured.")
+
+        filename = os.path.basename(dataset.csv_file_path)
+        path_in_repo = f"{self.base_path}/dataset_{dataset.id}/{filename}"
+
+        with open(dataset.csv_file_path, "rb") as f:
+            content = f.read()
+
+        content_b64 = base64.b64encode(content).decode("utf-8")
+
+        url = f"{self.api_base}/repos/{self.repo}/contents/{path_in_repo}"
+
+        # ============================
+        # ✅ 1. COMPROBAR SI YA EXISTE EL ARCHIVO
+        # ============================
+        sha = None
+        check_resp = requests.get(url, headers=self._headers())
+        if check_resp.status_code == 200:
+            existing_data = check_resp.json()
+            sha = existing_data.get("sha")   # ← ESTE ES EL QUE FALTABA
+            logger.info(f"File already exists in GitHub, will update it. SHA={sha}")
+        elif check_resp.status_code != 404:
+            raise Exception(f"GitHub API error when checking file: {check_resp.status_code} - {check_resp.text}")
+
+        # ============================
+        # ✅ 2. PREPARAR PAYLOAD (CON O SIN SHA)
+        # ============================
+        payload = {
+            "message": f"Add/update dataset {dataset.id}: {dataset.ds_meta_data.title}",
+            "content": content_b64,
+            "branch": self.branch,
+        }
+
+        if sha:
+            payload["sha"] = sha   
+
+        # ============================
+        # ✅ 3. SUBIR / ACTUALIZAR ARCHIVO
+        # ============================
+        response = requests.put(url, headers=self._headers(), json=payload)
+
+        if response.status_code not in (200, 201):
+            raise Exception(f"GitHub API error {response.status_code}: {response.text}")
+
+        data = response.json()
+        html_url = data.get("content", {}).get("html_url")
+
+        if not html_url:
+            html_url = f"https://github.com/{self.repo}/blob/{self.branch}/{path_in_repo}"
+
+        logger.info(f"Dataset {dataset.id} CSV uploaded/updated in GitHub: {html_url}")
+        return html_url

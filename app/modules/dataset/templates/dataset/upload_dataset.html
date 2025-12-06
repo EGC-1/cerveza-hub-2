@@ -90,7 +90,9 @@
                 </div>
             </div>
 
-                        {# SECCIÓN: ALMACENAMIENTO PERMANENTE #}
+            {# ========================================== #}
+            {# SECCIÓN: PERMANENT STORAGE (Zenodo/GitHub) #}
+            {# ========================================== #}
             <div class="col-lg-4">
                 <div class="card mb-4 border-primary">
                     <div class="card-header bg-primary text-white">
@@ -108,23 +110,44 @@
 
                         <div class="mb-3">
                             {{ form.storage_service.label(class="form-label") }}
-                            {{ form.storage_service(class="form-select") }}
+                            {{ form.storage_service(class="form-select", id="storage_service") }}
                             {% for error in form.storage_service.errors %}
                                 <span class="text-danger">{{ error }}</span>
                             {% endfor %}
                         </div>
 
+                        {# BLOQUE FakeNODO: solo aplica a Zenodo #}
+                        <div class="mb-3" id="fake-zenodo-block" style="display: none;">
+                            <label class="form-label">Zenodo connection (FakeNODO)</label>
+                            <div class="d-flex align-items-center">
+                                <button type="button"
+                                        id="connectFakeZenodoBtn"
+                                        class="btn btn-outline-light btn-sm"
+                                        style="border-radius: 5px;">
+                                    <i data-feather="zap"></i>
+                                    Connect to FakeNODO
+                                </button>
+                                <small id="fakeZenodoStatus"
+                                       class="ms-2 text-muted">
+                                    Not connected
+                                </small>
+                            </div>
+                            <input type="hidden" id="zenodo_connected"
+                                   name="zenodo_connected" value="false">
+                            <small class="d-block mt-1 text-muted">
+                                You must connect to FakeNODO to be able to publish to Zenodo.
+                            </small>
+                        </div>
+
                         <small class="text-muted d-block mt-2">
-                            <strong>Zenodo</strong> is fully integrated in this version.
+                            <strong>Zenodo (via FakeNODO)</strong> publishes your dataset with a DOI.
                             <br>
-                            <strong>GitHub</strong> and <strong>Figshare</strong> can be configured later as alternative
-                            permanent storage services.
+                            <strong>GitHub</strong> stores your dataset CSV inside a GitHub repository.
                         </small>
                     </div>
                 </div>
             </div>
 
-            
         </div>
         
         {# ========================================== #}
@@ -222,6 +245,13 @@
         <hr class="mt-4 mb-4">
         
         <div class="d-flex flex-column align-items-start">
+
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="agreeCheckbox">
+                <label class="form-check-label" for="agreeCheckbox">
+                    I agree to publish this dataset in the selected permanent storage service.
+                </label>
+            </div>
             
             {{ form.submit(class="btn btn-primary mt-3", id="upload_button", disabled=True) }}
             
@@ -241,19 +271,83 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const checkbox = document.getElementById('agreeCheckbox'); 
+            feather.replace();
+
+            const storageSelect = document.getElementById('storage_service');
+            const fakeBlock = document.getElementById('fake-zenodo-block');
+            const connectBtn = document.getElementById('connectFakeZenodoBtn');
+            const statusSpan = document.getElementById('fakeZenodoStatus');
+            const zenodoConnectedInput = document.getElementById('zenodo_connected');
+
+            const agreeCheckbox = document.getElementById('agreeCheckbox'); 
             const upload_button = document.getElementById('upload_button');
             const form = document.querySelector('form');
             const loadingDiv = document.getElementById('loading');
-            
-            if (checkbox && upload_button) {
-                // El botón de subir SÓLO se activa si se marca la casilla de Zenodo.
-                checkbox.addEventListener('change', function () {
-                    upload_button.disabled = !checkbox.checked;
+            const authorsDiv = document.getElementById('authors');
+
+            function updateFakeBlockVisibility() {
+                if (!storageSelect || !fakeBlock || !zenodoConnectedInput || !statusSpan) return;
+
+                if (storageSelect.value === 'zenodo') {
+                    fakeBlock.style.display = 'block';
+                } else {
+                    fakeBlock.style.display = 'none';
+                    // Reset estado de conexión cuando se cambia a GitHub
+                    zenodoConnectedInput.value = 'false';
+                    statusSpan.textContent = 'Not connected';
+                    statusSpan.classList.remove('text-success', 'text-danger');
+                    statusSpan.classList.add('text-muted');
+                }
+            }
+
+            function updateUploadButtonState() {
+                if (!upload_button) return;
+
+                const storage = storageSelect ? storageSelect.value : 'zenodo';
+                const agreeOk = !agreeCheckbox || agreeCheckbox.checked;
+                let enabled = agreeOk;
+
+                // Si el servicio es Zenodo, además exigimos conexión FakeNODO
+                if (enabled && storage === 'zenodo') {
+                    enabled = (zenodoConnectedInput && zenodoConnectedInput.value === 'true');
+                }
+
+                upload_button.disabled = !enabled;
+            }
+
+            // Inicialización estado
+            updateFakeBlockVisibility();
+            updateUploadButtonState();
+
+            if (storageSelect) {
+                storageSelect.addEventListener('change', function () {
+                    updateFakeBlockVisibility();
+                    updateUploadButtonState();
                 });
-                
-                // Inicialmente deshabilitado si no está marcado
-                upload_button.disabled = !checkbox.checked;
+            }
+
+            if (agreeCheckbox) {
+                agreeCheckbox.addEventListener('change', updateUploadButtonState);
+            }
+
+            if (connectBtn && zenodoConnectedInput && statusSpan) {
+                connectBtn.addEventListener('click', function () {
+                    // Opcional: probar conexión real a Zenodo/FakeNODO si existe la función global
+                    if (typeof test_zenodo_connection === 'function') {
+                        try {
+                            test_zenodo_connection();
+                        } catch (e) {
+                            console.error('Error calling test_zenodo_connection:', e);
+                        }
+                    }
+
+                    zenodoConnectedInput.value = 'true';
+                    statusSpan.textContent = 'Connected (FakeNODO)';
+                    statusSpan.classList.remove('text-muted', 'text-danger');
+                    statusSpan.classList.add('text-success');
+
+                    updateUploadButtonState();
+                });
             }
             
             // Show "loading" when submitting
@@ -265,9 +359,8 @@
             }
             
             // Lógica para eliminar autores dinámicamente
-            const authorsDiv = document.getElementById('authors');
             if (authorsDiv) {
-                 authorsDiv.addEventListener('click', function(e) {
+                authorsDiv.addEventListener('click', function(e) {
                     if (e.target.classList.contains('remove-author')) {
                         e.target.closest('.author').remove();
                     }

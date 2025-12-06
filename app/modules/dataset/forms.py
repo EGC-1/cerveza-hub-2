@@ -71,10 +71,8 @@ class DataSetForm(FlaskForm):
     storage_service = SelectField(
         "Permanent storage service",
         choices=[
-            ("none", "Do not upload (local only)"),
-            ("zenodo", "Zenodo"),
-            ("github", "GitHub (backup in a repository)"),
-            ("figshare", "Figshare"),
+            ("zenodo", "Zenodo (via FakeNODO)"),
+            ("github", "GitHub (repository backup)"),
         ],
         default="none",
     )
@@ -257,8 +255,9 @@ class DataSetForm(FlaskForm):
             "description": self.desc.data,
             "publication_type": publication_type_converted,
             "tags": self.tags.data,
-            "storage_service": self.storage_service.data or "none",
+            "storage_service": self.storage_service.data or "zenodo",
         }
+
 
     def convert_publication_type(self, value):
         for pt in PublicationType:
