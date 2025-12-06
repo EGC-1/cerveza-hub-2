@@ -49,6 +49,8 @@ class DSMetaData(db.Model):
     publication_doi = db.Column(db.String(120))
     dataset_doi = db.Column(db.String(120))
     tags = db.Column(db.String(120))
+    storage_service = db.Column(db.String(50), nullable=False, default="none")
+    storage_record_url = db.Column(db.String(255))
 
     authors = db.relationship("Author", backref="ds_meta_data", lazy=True, cascade="all, delete")
 
@@ -90,6 +92,11 @@ class DataSet(db.Model):
     def get_zenodo_url(self):
         return f"https://zenodo.org/record/{self.ds_meta_data.deposition_id}" if self.ds_meta_data.dataset_doi else None
 
+    def get_storage_url(self):
+        if getattr(self.ds_meta_data, "storage_record_url", None):
+            return self.ds_meta_data.storage_record_url
+        return self.get_zenodo_url()
+    
     def get_files_count(self):
         return 1 if self.csv_file_path else 0
 
@@ -125,21 +132,28 @@ class DataSet(db.Model):
             "tags": self.ds_meta_data.tags.split(",") if self.ds_meta_data.tags else [],
             "url": self.get_uvlhub_doi(),
             "download": f'{request.host_url.rstrip("/")}/dataset/download/{self.id}',
+
+            # ANTIGUO (backwards compatible)
             "zenodo": self.get_zenodo_url(),
+
+            # NUEVO
+            "storage_service": getattr(self.ds_meta_data, "storage_service", "none") or "none",
+            "storage_record_url": self.get_storage_url(),
+
             "files": [{
                 "name": os.path.basename(self.csv_file_path) if self.csv_file_path else "N/A",
                 "size_in_bytes": self.get_file_total_size()
             }] if self.csv_file_path else [],
-            "files_count": self.get_files_count(), 
-            "total_size_in_bytes": self.get_file_total_size(), 
-            "total_size_in_human_format": self.get_file_total_size_for_human(), 
+            "files_count": self.get_files_count(),
+            "total_size_in_bytes": self.get_file_total_size(),
+            "total_size_in_human_format": self.get_file_total_size_for_human(),
             "download_count": self.download_count,
-          
             "csv_metrics": {
                 "row_count": self.row_count,
                 "columns": self.column_names.split(',') if self.column_names else []
             }
         }
+
 
     def __repr__(self):
         return f"DataSet<{self.id}>"
