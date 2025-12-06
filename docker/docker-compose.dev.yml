@@ -3,12 +3,17 @@ services:
     container_name: web_app_container
     env_file:
       - ../.env
+    environment:
+      - FLASK_ENV=development
+      - ZENODO_API_URL=http://fakenodo:5000/api/deposit/depositions
+      - ZENODO_ACCESS_TOKEN=fake_token
     expose:
       - "5000"
     depends_on:
       - db
       - selenium-hub
       - mailpit 
+      - fakenodo
     build:
       context: ../
       dockerfile: docker/images/Dockerfile.dev
@@ -91,6 +96,13 @@ services:
       - ../.env.selenium
     depends_on:
       - selenium-hub
+    networks:
+      - uvlhub_network
+  fakenodo:
+    build: ../fakenodo 
+    container_name: fakenodo
+    ports:
+      - "5000:5000"
     networks:
       - uvlhub_network
 
