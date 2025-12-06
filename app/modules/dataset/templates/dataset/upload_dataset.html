@@ -90,34 +90,40 @@
                 </div>
             </div>
 
-            {# ========================================== #}
-            {# SECCIÓN: ACTIVACIÓN ZENODO #}
-            {# ========================================== #}
+                        {# SECCIÓN: ALMACENAMIENTO PERMANENTE #}
             <div class="col-lg-4">
                 <div class="card mb-4 border-primary">
                     <div class="card-header bg-primary text-white">
-                        <h3 class="card-title mb-0"><i class="align-middle me-2" data-feather="cloud-lightning"></i> Zenodo Publishing</h3>
+                        <h3 class="card-title mb-0">
+                            <i class="align-middle me-2" data-feather="cloud-lightning"></i>
+                            Permanent storage
+                        </h3>
                     </div>
                     <div class="card-body">
                         <p class="card-text">
-                            Enable this option to automatically generate a permanent **DOI** for your dataset on Zenodo, ensuring maximum visibility and citation.
+                            Choose where you want to permanently store and publish your dataset
+                            (e.g. to obtain a DOI and make it citable).
                             <hr class="my-3">
                         </p>
-                        
-                        {# Botón/Checkbox de activación #}
-                        <div class="form-check">
-                            <input id="agreeCheckbox" class="form-check-input" type="checkbox" name="upload_to_zenodo" value="true">
-                            <label class="form-check-label" for="agreeCheckbox" style="font-size: 15px">
-                                **Use Zenodo** (Create DOI and publish dataset)
-                            </label>
-                            <small class="text-muted d-block mt-2">
-                                By checking this, you agree to public open access under a **CC BY 4.0 license** on Zenodo.
-                            </small>
+
+                        <div class="mb-3">
+                            {{ form.storage_service.label(class="form-label") }}
+                            {{ form.storage_service(class="form-select") }}
+                            {% for error in form.storage_service.errors %}
+                                <span class="text-danger">{{ error }}</span>
+                            {% endfor %}
                         </div>
 
+                        <small class="text-muted d-block mt-2">
+                            <strong>Zenodo</strong> is fully integrated in this version.
+                            <br>
+                            <strong>GitHub</strong> and <strong>Figshare</strong> can be configured later as alternative
+                            permanent storage services.
+                        </small>
                     </div>
                 </div>
             </div>
+
             
         </div>
         

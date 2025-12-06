@@ -93,7 +93,21 @@
                 </div>
                 {% endif %}
                 
-                {% if dataset.ds_meta_data.dataset_doi %}
+                {# ==== BLOQUE NUEVO: ALMACENAMIENTO PERMANENTE GENÉRICO + FALLBACK ZENODO ==== #}
+                {% if dataset.get_storage_url() %}
+                <div class="row mb-2">
+                    <div class="col-md-4 col-12">
+                        <span class=" text-secondary">
+                            Permanent storage ({{ (dataset.ds_meta_data.storage_service or 'none')|capitalize }})
+                        </span>
+                    </div>
+                    <div class="col-md-8 col-12">
+                        <a href="{{ dataset.get_storage_url() }}" target="_blank">
+                            {{ dataset.get_storage_url() }}
+                        </a>
+                    </div>
+                </div>
+                {% elif dataset.ds_meta_data.dataset_doi %}
                 <div class="row mb-2">
                     <div class="col-md-4 col-12">
                         <span class=" text-secondary">Zenodo record</span>
@@ -119,6 +133,8 @@
                     {% endif %}
                 </div>
                 {% endif %}
+                {# ==== FIN BLOQUE NUEVO ==== #}
+
                 <div class="row mb-2">
                     <div class="col-md-4 col-12">
                         <span class=" text-secondary">Tags</span>
