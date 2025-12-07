@@ -105,6 +105,23 @@ services:
       - "5000:5000"
     networks:
       - uvlhub_network
+  
+  locust:
+    image: locustio/locust
+    container_name: locust_container
+    ports:
+      - "8089:8089"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - "../:/mnt/locust"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - uvlhub_network
+    user: root
+    entrypoint: []
+    command: >
+      sh -c "ln -sfn /mnt/locust /app && apt-get update && apt-get install -y g++ build-essential && pip install -r /app/requirements.txt && cd /app && locust"
 
 volumes:
   db_data:
