@@ -13,7 +13,7 @@ def role_admin_check():
     """Redirige al usuario si no es administrador."""
     if not is_admin():
         flash('Acceso denegado. Se requiere rol de administrador.', 'danger')
-        return redirect(url_for('main.index')) 
+        return redirect(url_for('public.index')) 
     return None 
 
 
