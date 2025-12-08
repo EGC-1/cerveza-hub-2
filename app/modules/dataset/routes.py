@@ -168,13 +168,25 @@ def create_dataset():
         # -------- GITHUB --------
         elif storage_service == "github":
             try:
+                # 1) Subir CSV a GitHub
                 github_url = github_service.upload_dataset_csv(dataset)
-                dataset.ds_meta_data.storage_record_url = github_url
+
+                # 2) Generar DOI improvisado (igual que FakeNODO pero para GitHub)
+                fake_doi = dataset.ds_meta_data.generate_fake_doi_for_github(dataset.id)
+
+                # 3) Guardar en metadatos
+                dataset.ds_meta_data.dataset_doi = fake_doi
                 dataset.ds_meta_data.storage_service = "github"
+                dataset.ds_meta_data.storage_record_url = github_url
+
                 db.session.commit()
-                flash("Dataset successfully stored in GitHub.", "success")
+
+                flash("Dataset successfully stored in GitHub with simulated DOI.", "success")
+
             except Exception as exc:
-                flash(f"Dataset created locally, but GitHub upload failed: {exc}", "warning")
+                db.session.rollback()
+                flash(f"Dataset created locally, but GitHub upload failed: {exc}", "danger")
+
 
 
         # ============================
@@ -183,13 +195,12 @@ def create_dataset():
 
         db.session.refresh(dataset.ds_meta_data)
 
-        # ✅ SOLO USAMOS /doi SI REALMENTE ES ZENODO Y HAY DOI
-        if dataset.ds_meta_data.storage_service == "zenodo" and dataset.ds_meta_data.dataset_doi:
+        if dataset.ds_meta_data.dataset_doi:
             doi_only = dataset.ds_meta_data.dataset_doi.replace("https://doi.org/", "")
-            return redirect(url_for('dataset.subdomain_index', doi=doi_only))
+            return redirect(url_for("dataset.subdomain_index", doi=doi_only))
 
-        # ✅ GITHUB Y RESTO → SIEMPRE VISTA NORMAL
-        return redirect(url_for('dataset.get_unsynchronized_dataset', dataset_id=dataset.id))
+        return redirect(url_for("dataset.get_unsynchronized_dataset", dataset_id=dataset.id))
+
         
     return render_template("dataset/upload_dataset.html", form=form)
 

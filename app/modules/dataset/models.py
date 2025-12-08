@@ -53,6 +53,10 @@ class DSMetaData(db.Model):
     storage_record_url = db.Column(db.String(255))
 
     authors = db.relationship("Author", backref="ds_meta_data", lazy=True, cascade="all, delete")
+    def generate_fake_doi_for_github(self, dataset_id: int) -> str:
+
+        return f"10.9999/cervezahub.github.dataset.{dataset_id}"
+
 
 
 class DataSet(db.Model):
