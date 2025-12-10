@@ -10,6 +10,5 @@
         line: '{{ item }}'
         create: yes
       with_items:
-        - 'source {{ working_dir }}vagrant_venv/bin/activate'
-        - 'cd {{ working_dir }}'
-      when: ansible_user == 'vagrant'
+        - 'source /home/vagrant/vagrant_venv/bin/activate'
+        - 'cd /vagrant'

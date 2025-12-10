@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from flask_mail import Mail # 1. Importar Flask-Mail
+from flask_mail import Mail
 
 from core.configuration.configuration import get_app_version
 from core.managers.config_manager import ConfigManager
@@ -14,9 +14,17 @@ from core.managers.module_manager import ModuleManager
 
 load_dotenv()
 
+# --- FIX: Limpieza de variables de entorno para Windows (\r) ---
+# Esto elimina los caracteres invisibles que rompen la conexión a la base de datos
+if os.environ.get('MARIADB_HOSTNAME'):
+    for key, value in os.environ.items():
+        if isinstance(value, str):
+            os.environ[key] = value.strip()
+# --------------------------------------------------------------
+
 db = SQLAlchemy()
 migrate = Migrate()
-mail = Mail() # 2. Crear la instancia global de Mail
+mail = Mail()
 
 
 def create_app(config_name="development"):
@@ -28,7 +36,6 @@ def create_app(config_name="development"):
     db.init_app(app)
     migrate.init_app(app, db)
     
-    # 3. Inicializar Flask-Mail con la app
     mail.init_app(app) 
 
     module_manager = ModuleManager(app)
@@ -43,7 +50,6 @@ def create_app(config_name="development"):
     @login_manager.user_loader
     def load_user(user_id):
         from app.modules.auth.models import User
-
         return User.query.get(int(user_id))
 
     logging_manager = LoggingManager(app)

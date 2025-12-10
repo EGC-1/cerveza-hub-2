@@ -30,15 +30,15 @@
         executable: /bin/bash
 
     - name: Set up the Python 3.12 virtual environment
-      command: python3.12 -m venv {{ working_dir }}/vagrant_venv
+      command: python3.12 -m venv --copies /home/vagrant/vagrant_venv
       args:
-        creates: "{{ working_dir }}/vagrant_venv/bin/activate"
+        creates: "/home/vagrant/vagrant_venv/bin/activate"
 
     - name: Activate the virtual environment and install dependencies
       shell: |
-        source {{ working_dir }}/vagrant_venv/bin/activate
+        source /home/vagrant/vagrant_venv/bin/activate
         pip install --upgrade pip
-        cd {{ working_dir }}
+        cd /vagrant
         pip install -r requirements.txt
         pip install -e ./
       args:

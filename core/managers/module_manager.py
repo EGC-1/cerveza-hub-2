@@ -12,7 +12,7 @@ class ModuleManager:
     def __init__(self, app):
         self.app = app
         self.base_dir = os.path.abspath(os.path.dirname(__file__))
-        working_dir = os.getenv("WORKING_DIR", "")
+        working_dir = os.getenv("WORKING_DIR", "").strip()
         self.modules_dir = os.path.join(working_dir, "app/modules")
         self.ignored_modules_file = os.path.join(working_dir, ".moduleignore")
         self.ignored_modules = self._load_ignored_modules()
