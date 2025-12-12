@@ -131,51 +131,51 @@ class DataSetService(BaseService):
             "orcid": current_user.profile.orcid,
         }
         try:
-            # 1. Crear DSMetaData y Autores
+            
             logger.info(f"Creating dsmetadata...: {form.get_dsmetadata()}")
             dsmetadata = self.dsmetadata_repository.create(**form.get_dsmetadata())
             for author_data in [main_author] + form.get_authors():
                 author = self.author_repository.create(commit=False, ds_meta_data_id=dsmetadata.id, **author_data)
                 dsmetadata.authors.append(author)
 
-            # 2. Crear DataSet (padre) y hacer flush para obtener el ID necesario para la carpeta
+            
             dataset = self.create(commit=False, user_id=current_user.id, ds_meta_data_id=dsmetadata.id)
             self.repository.session.flush()
 
-            # 3. MANEJAR SUBIDA DE ARCHIVO CSV (NUEVA LÓGICA)
+            
             csv_file_data = form.csv_file.data
             if csv_file_data and csv_file_data.filename:
                 
-                # Definir la ruta de almacenamiento
+                
                 working_dir = os.getenv("WORKING_DIR", os.path.join(os.getcwd(), "tmp_uploads"))
                 dataset_upload_dir = os.path.join(working_dir, "datasets", str(dataset.id))
                 os.makedirs(dataset_upload_dir, exist_ok=True)
                 
-                # Asegurar el nombre del archivo y la ruta completa
+                
                 filename = secure_filename(csv_file_data.filename)
                 csv_file_path = os.path.join(dataset_upload_dir, filename)
 
-                # Guardar el archivo en el disco
+                
                 csv_file_data.seek(0)
                 csv_file_data.save(csv_file_path)
                 
-                # Calcular Checksum y Tamaño
+                
                 checksum, size = calculate_checksum_and_size(csv_file_path)
 
-                # Actualizar el objeto DataSet con la metadata del archivo CSV
+                
                 dataset.csv_file_path = csv_file_path
                 dataset.checksum = checksum
                 dataset.size = size
-                # Se establece el nombre del dataset basado en el nombre del archivo subido
+                
                 dataset.name = filename 
-            # FIN MANEJO CSV
+            
 
             self.repository.session.commit()
         except Exception as exc:
             logger.info(f"Exception creating dataset from form...: {exc}")
-            # Si la subida falla, limpiamos la sesión
+            
             self.repository.session.rollback()
-            # para no registrar el dataset en la DB.
+            
             raise exc
         return dataset
 
@@ -308,9 +308,6 @@ class GitHubService:
 
         url = f"{self.api_base}/repos/{self.repo}/contents/{path_in_repo}"
 
-        # ============================
-        # ✅ 1. COMPROBAR SI YA EXISTE EL ARCHIVO
-        # ============================
         sha = None
         check_resp = requests.get(url, headers=self._headers())
         if check_resp.status_code == 200:
@@ -320,9 +317,6 @@ class GitHubService:
         elif check_resp.status_code != 404:
             raise Exception(f"GitHub API error when checking file: {check_resp.status_code} - {check_resp.text}")
 
-        # ============================
-        # ✅ 2. PREPARAR PAYLOAD (CON O SIN SHA)
-        # ============================
         payload = {
             "message": f"Add/update dataset {dataset.id}: {dataset.ds_meta_data.title}",
             "content": content_b64,
@@ -332,9 +326,6 @@ class GitHubService:
         if sha:
             payload["sha"] = sha   
 
-        # ============================
-        # ✅ 3. SUBIR / ACTUALIZAR ARCHIVO
-        # ============================
         response = requests.put(url, headers=self._headers(), json=payload)
 
         if response.status_code not in (200, 201):

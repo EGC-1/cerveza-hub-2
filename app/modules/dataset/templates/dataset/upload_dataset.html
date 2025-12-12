@@ -256,14 +256,14 @@
                 upload_button.disabled = !agreeOk;
             }
 
-            // Inicialización estado
+           
             updateUploadButtonState();
 
             if (agreeCheckbox) {
                 agreeCheckbox.addEventListener('change', updateUploadButtonState);
             }
 
-            // Show "loading" when submitting
+           
             if (form && upload_button && loadingDiv) {
                 form.addEventListener('submit', function() {
                     upload_button.disabled = true;
@@ -271,7 +271,7 @@
                 });
             }
 
-            // Lógica para eliminar autores dinámicamente
+            
             if (authorsDiv) {
                 authorsDiv.addEventListener('click', function(e) {
                     if (e.target.classList.contains('remove-author')) {

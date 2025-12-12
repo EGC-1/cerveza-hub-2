@@ -116,15 +116,11 @@ def create_dataset():
             flash(f"Error creating local dataset: {exc}", "danger")
             return render_template("dataset/upload_dataset.html", form=form)
 
-        
-        # ============================
-        # PUBLICACIÓN EN ALMACENAMIENTO PERMANENTE
-        # ============================
 
         dataset.ds_meta_data.storage_service = storage_service
         db.session.commit()
 
-        # -------- ZENODO / FAKENODO --------
+        
         if storage_service == "zenodo":
             try:
                 zenodo_response_json = zenodo_service.create_new_deposition(dataset)
@@ -165,16 +161,16 @@ def create_dataset():
                 flash(f"Dataset created locally, but Zenodo synchronization failed: {exc}", "warning")
 
 
-        # -------- GITHUB --------
+        
         elif storage_service == "github":
             try:
-                # 1) Subir CSV a GitHub
+                
                 github_url = github_service.upload_dataset_csv(dataset)
 
-                # 2) Generar DOI improvisado (igual que FakeNODO pero para GitHub)
+                
                 fake_doi = dataset.ds_meta_data.generate_fake_doi_for_github(dataset.id)
 
-                # 3) Guardar en metadatos
+                
                 dataset.ds_meta_data.dataset_doi = fake_doi
                 dataset.ds_meta_data.storage_service = "github"
                 dataset.ds_meta_data.storage_record_url = github_url
@@ -186,12 +182,6 @@ def create_dataset():
             except Exception as exc:
                 db.session.rollback()
                 flash(f"Dataset created locally, but GitHub upload failed: {exc}", "danger")
-
-
-
-        # ============================
-        # ✅ REDIRECCIÓN FINAL CORRECTA (SIN doi/None)
-        # ============================
 
         db.session.refresh(dataset.ds_meta_data)
 
