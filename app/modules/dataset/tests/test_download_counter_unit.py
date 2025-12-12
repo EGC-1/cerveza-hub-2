@@ -1,12 +1,11 @@
 import pytest
-from datetime import datetime
-from unittest.mock import patch, MagicMock
 
 from app import db
 from app.modules.auth.models import User, Role
 from app.modules.dataset.models import DataSet, DSMetaData, DSDownloadRecord, PublicationType
 
-# --- FIXTURE DE CONTEXTO ---
+# --- CONTEXT FIXTURE ---
+
 @pytest.fixture(autouse=True)
 def setup_context(test_client):
     """
@@ -33,10 +32,9 @@ def _create_role():
 
 def _create_user(email: str = "user@test.com") -> User:
     """Helper para crear un usuario base."""
-    # 1. Aseguramos que existe el Rol (para evitar error de Foreign Key)
+    
     _create_role()
     
-    # 2. Creamos el usuario SOLO con los campos que tiene tu modelo User
     user = User(email=email, password="password123")
     db.session.add(user)
     db.session.commit()
@@ -110,6 +108,25 @@ def test_3_record_creation_constraint(clean_database):
 
     assert record.id is not None
     assert record.dataset_id == dataset.id
+    
+    
+def test_4_json_exposure(clean_database, test_client):
+    """
+    Test 4: Serialización.
+    Verifica que el método `to_dict` incluye el contador.
+    SOLUCIÓN: Usamos test_request_context() para simular que hay una URL activa.
+    """
+    user = _create_user()
+    dataset = _create_dataset(user)
+    dataset.download_count = 99
+    db.session.commit()
+
+    with test_client.application.test_request_context():
+
+        data = dataset.to_dict()
+
+        assert "download_count" in data
+        assert data["download_count"] == 99
 
     
 
