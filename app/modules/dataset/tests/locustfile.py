@@ -182,3 +182,133 @@ class CommunityUser(HttpUser):
     tasks = [CommunityWorkflow]
     wait_time = between(2, 5) 
     host = get_host_for_locust_testing()
+
+class GithubDatasetUploadWorkflow(SequentialTaskSet):
+    email = None
+    password = None
+
+    # ---------- helpers ----------
+    def _csrf_from_html(self, html_text: str):
+        patterns = [
+            r'value=["\']([^"\']+)["\'][^>]*name=["\']csrf_token["\']',
+            r'name=["\']csrf_token["\'][^>]*value=["\']([^"\']+)["\']',
+            r'id=["\']csrf_token["\'][^>]*value=["\']([^"\']+)["\']'
+        ]
+        for p in patterns:
+            m = re.search(p, html_text, re.IGNORECASE)
+            if m:
+                return m.group(1)
+        return None
+
+    def _register(self) -> bool:
+        r = self.client.get("/signup/", allow_redirects=True)
+        if r.status_code != 200:
+            logger.error(f"❌ No se pudo cargar /signup/ (status={r.status_code})")
+            return False
+
+        csrf = self._csrf_from_html(r.text)
+        if not csrf:
+            logger.error("❌ No CSRF en /signup/")
+            return False
+
+        data = {
+            "email": self.email,
+            "password": self.password,
+            "confirm_password": self.password,
+            "name": "Locust",
+            "surname": "Tester",
+            "csrf_token": csrf,
+            "submit": "Submit",
+        }
+
+        with self.client.post("/signup/", data=data, catch_response=True, allow_redirects=True) as pr:
+            # éxito típico: redirección o url distinta de signup
+            if pr.status_code in (200, 302) and "signup" not in pr.url:
+                pr.success()
+                return True
+            pr.failure(f"Fallo registro (status={pr.status_code}, url={pr.url})")
+            return False
+
+    def _login(self):
+        for login_url in ("/auth/login", "/login"):
+            r = self.client.get(login_url, allow_redirects=True)
+            if r.status_code == 200:
+                csrf = self._csrf_from_html(r.text)
+                if not csrf:
+                    return
+                self.client.post(
+                    login_url,
+                    data={"email": self.email, "password": self.password, "csrf_token": csrf},
+                    allow_redirects=True,
+                )
+                return
+
+    def _make_csv(self, rows=200, cols=6) -> io.BytesIO:
+        header = ",".join([f"c{i}" for i in range(cols)]) + "\n"
+        body = []
+        for r in range(rows):
+            body.append(",".join([str((r + 7) * (c + 3)) for c in range(cols)]) + "\n")
+        return io.BytesIO((header + "".join(body)).encode("utf-8"))
+
+    def on_start(self):
+        rid = str(uuid.uuid4())[:8]
+        self.email = f"locust_{rid}@test.com"
+        self.password = "password123"
+
+        if not self._register():
+            self._login()
+
+    # ---------- task ----------
+    @task
+    def upload_dataset_github_permanent_backup(self):
+        # 1) GET form
+        r = self.client.get("/dataset/upload", allow_redirects=True)
+        if "/login" in r.url:
+            logger.error("❌ Redirige a login. Sesión no autenticada.")
+            return
+        if r.status_code != 200:
+            logger.error(f"❌ GET /dataset/upload status={r.status_code}")
+            return
+
+        csrf = self._csrf_from_html(r.text)
+        if not csrf:
+            logger.error("❌ No CSRF en /dataset/upload")
+            return
+
+        # 2) POST form: storage_service=github y file en csv_file
+        csv_bytes = self._make_csv(rows=350, cols=8)
+        csv_bytes.seek(0)
+
+        # NOTA: Los campos de metadatos exactos dependen de DataSetForm.
+        # Dejamos los mínimos + algunos comunes; si tu form exige más, añade aquí los name="" exactos.
+        form_data = {
+            "csrf_token": csrf,
+            "storage_service": "github",   # <-- CLAVE según tu controlador
+            "submit": "Submit",
+        }
+
+        files = {
+            "csv_file": ("dataset_locust.csv", csv_bytes, "text/csv")  # <-- CLAVE según tu controlador
+        }
+
+        with self.client.post(
+            "/dataset/upload",
+            data=form_data,
+            files=files,
+            catch_response=True,
+            allow_redirects=True,
+        ) as pr:
+            # éxito: normalmente redirige a /doi/<...>/ o /dataset/unsynchronized/<id>/
+            if pr.status_code in (200, 302) and (
+                "/doi/" in pr.url or "/dataset/unsynchronized/" in pr.url or "/dataset/upload" not in pr.url
+            ):
+                pr.success()
+                logger.info(f"✅ Upload GitHub OK -> {pr.url}")
+            else:
+                pr.failure(f"Upload GitHub FAIL (status={pr.status_code}, url={pr.url})")
+
+
+class GithubDatasetUser(HttpUser):
+    tasks = [GithubDatasetUploadWorkflow]
+    wait_time = between(2, 5)
+    host = get_host_for_locust_testing()
