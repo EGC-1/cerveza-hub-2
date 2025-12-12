@@ -187,4 +187,19 @@ def test_public_dataset_downloads_by_different_users(test_client, public_dataset
     db.session.close()
     if os.path.exists(csv_path):
         os.remove(csv_path)
-        
+
+def test_download_route_missing_file_redirects(test_client, dataset_scenario):
+    """
+    Caso 4: Archivo no encontrado.
+    Si el CSV físico se borra, la web debe redirigir (302) en vez de dar error 500.
+    """
+    dataset_id, csv_path = dataset_scenario
+
+    if os.path.exists(csv_path):
+        os.remove(csv_path)
+
+    response = test_client.get(f"/dataset/download/{dataset_id}")
+
+    assert response.status_code == 302
+    
+    db.session.close()
