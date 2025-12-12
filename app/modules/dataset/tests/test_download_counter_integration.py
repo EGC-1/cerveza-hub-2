@@ -1,3 +1,4 @@
+import uuid
 import pytest
 import os
 import shutil
@@ -10,9 +11,12 @@ from app.modules.dataset.models import DataSet, DSMetaData, PublicationType
 @pytest.fixture
 def dataset_scenario(test_client, tmp_path):
     """
-    Crea todo el escenario necesario: Rol, Usuario, Archivo físico y Dataset.
+    Crea un escenario ÚNICO para cada test.
+    Usamos uuid para que el email y el DOI nunca se repitan, 
+    evitando el error de 'Duplicate entry'.
     """
-
+    unique_id = str(uuid.uuid4())[:8] 
+    
     with test_client.application.app_context():
         
         role = Role.query.get(1)
@@ -21,15 +25,17 @@ def dataset_scenario(test_client, tmp_path):
             db.session.add(role)
             db.session.commit()
 
-        user = User(email="integration@test.com", password="password123")
+        user_email = f"user_{unique_id}@test.com"
+        user = User(email=user_email, password="password123")
         db.session.add(user)
         db.session.commit()
 
+
         meta = DSMetaData(
-            title="Integration Test DS", 
+            title=f"Integration Test DS {unique_id}", 
             description="Desc", 
             publication_type=PublicationType.JOURNAL_ARTICLE,
-            dataset_doi="10.1234/integration"
+            dataset_doi=f"10.1234/integration_{unique_id}" 
         )
         db.session.add(meta)
         db.session.commit()
@@ -38,7 +44,7 @@ def dataset_scenario(test_client, tmp_path):
         dataset_folder.mkdir()
         dummy_csv = dataset_folder / "data.csv"
         dummy_csv.write_text("col1,col2\nval1,val2")
-        
+    
         dataset = DataSet(
             user_id=user.id, 
             ds_meta_data_id=meta.id,
@@ -49,7 +55,6 @@ def dataset_scenario(test_client, tmp_path):
         db.session.commit()
 
         return user.id, dataset.id
-
 
 # --- TESTS ---
 
@@ -72,3 +77,20 @@ def test_download_route_happy_path(test_client, dataset_scenario):
         dataset = db.session.get(DataSet, dataset_id)
         assert dataset.download_count == 1
         
+        
+def test_download_route_spam_protection(test_client, dataset_scenario):
+    """
+    Escenario Spam: Usuario descarga 3 veces seguidas.
+    El contador debe quedarse en 1.
+    """
+    user_id, dataset_id = dataset_scenario
+
+    test_client.get(f"/dataset/download/{dataset_id}")
+
+    test_client.get(f"/dataset/download/{dataset_id}")
+
+    test_client.get(f"/dataset/download/{dataset_id}")
+
+    with test_client.application.app_context():
+        dataset = db.session.get(DataSet, dataset_id)
+        assert dataset.download_count == 1
