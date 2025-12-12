@@ -22,22 +22,6 @@
             </div>
         </div>
     </div>
-
-    {# Bloque de mensajes Flash #}
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    <div class="alert-message">
-                        {{ message }}
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-    {# Fin de mensajes Flash #}
-
     <form method="POST" action="{{ url_for('dataset.create_dataset') }}" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
 
