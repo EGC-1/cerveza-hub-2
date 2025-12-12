@@ -91,6 +91,26 @@ def test_2_counter_accepts_increments(clean_database):
     assert dataset.download_count == 1
     
 
+def test_3_record_creation_constraint(clean_database):
+    """
+    Test 3: Relaciones (Foreign Keys).
+    Verifica que podemos crear un registro de descarga vinculado al dataset.
+    Sirve para detectar: Fallos en las claves foráneas (user_id/dataset_id).
+    """
+    user = _create_user()
+    dataset = _create_dataset(user)
+
+    record = DSDownloadRecord(
+        user_id=user.id,
+        dataset_id=dataset.id,
+        download_cookie="test_cookie"
+    )
+    db.session.add(record)
+    db.session.commit()
+
+    assert record.id is not None
+    assert record.dataset_id == dataset.id
+
     
 
     
