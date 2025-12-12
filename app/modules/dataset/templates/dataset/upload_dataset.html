@@ -42,7 +42,7 @@
         {{ form.hidden_tag() }}
 
         <div class="row">
-            
+
             {# ========================================== #}
             {# SECCIÓN: INFORMACIÓN BÁSICA #}
             {# ========================================== #}
@@ -52,7 +52,7 @@
                         <h3 class="card-title"><i class="align-middle me-2" data-feather="info"></i> Basic Information</h3>
                     </div>
                     <div class="card-body">
-                        
+
                         <div class="row">
                             <div class="col-12 mb-3">
                                 {{ form.title.label(class="form-label") }} <span class="text-danger">*</span>
@@ -74,9 +74,9 @@
                                 {{ form.publication_type.label(class="form-label") }}
                                 {{ form.publication_type(class="form-control") }}
                             </div>
-                            
+
                             {# ELIMINADO: form.publication_doi (Related Publication) #}
-                            
+
                             <div class="col-lg-6 col-md-6 mb-3">
                                 {{ form.tags.label(class="form-label") }}
                                 {{ form.tags(class="form-control", placeholder="e.g. beer, abv, ibu, data science") }}
@@ -115,41 +115,12 @@
                                 <span class="text-danger">{{ error }}</span>
                             {% endfor %}
                         </div>
-
-                        {# BLOQUE FakeNODO: solo aplica a Zenodo #}
-                        <div class="mb-3" id="fake-zenodo-block" style="display: none;">
-                            <label class="form-label">Zenodo connection (FakeNODO)</label>
-                            <div class="d-flex align-items-center">
-                                <button type="button"
-                                        id="connectFakeZenodoBtn"
-                                        class="btn btn-outline-light btn-sm"
-                                        style="border-radius: 5px;">
-                                    <i data-feather="zap"></i>
-                                    Connect to FakeNODO
-                                </button>
-                                <small id="fakeZenodoStatus"
-                                       class="ms-2 text-muted">
-                                    Not connected
-                                </small>
-                            </div>
-                            <input type="hidden" id="zenodo_connected"
-                                   name="zenodo_connected" value="false">
-                            <small class="d-block mt-1 text-muted">
-                                You must connect to FakeNODO to be able to publish to Zenodo.
-                            </small>
-                        </div>
-
-                        <small class="text-muted d-block mt-2">
-                            <strong>Zenodo (via FakeNODO)</strong> publishes your dataset with a DOI.
-                            <br>
-                            <strong>GitHub</strong> stores your dataset CSV inside a GitHub repository.
-                        </small>
                     </div>
                 </div>
             </div>
 
         </div>
-        
+
         {# ========================================== #}
         {# SECCIÓN: AUTORES #}
         {# ========================================== #}
@@ -167,7 +138,7 @@
                 <div id="authors">
                     {% for subform in form.authors %}
                     <div class="row author mb-3 p-3 border rounded" style="background-color: #f8f9fa;">
-                        
+
                         {# Campo Nombre/Name #}
                         <div class="col-lg-6 col-12 mb-3">
                             {{ subform.form.name.label(class="form-label") }}
@@ -206,7 +177,7 @@
                                 <span class="text-danger">{{ error }}</span>
                             {% endfor %}
                         </div>
-                        
+
                         {# Botón de Eliminar para autores adicionales #}
                         {% if not loop.first %}
                         <div class="col-12 d-flex justify-content-end">
@@ -216,11 +187,11 @@
                     </div>
                     {% endfor %}
                 </div>
-                
+
                 <button type="button" class="btn btn-secondary mt-2" id="add_author"><i class="align-middle me-2" data-feather="plus"></i> Add Author</button>
             </div>
         </div>
-        
+
         {# ========================================== #}
         {# SECCIÓN: ARCHIVO CSV #}
         {# ========================================== #}
@@ -243,7 +214,7 @@
         {# SECCIÓN: TÉRMINOS Y ENVÍO #}
         {# ========================================== #}
         <hr class="mt-4 mb-4">
-        
+
         <div class="d-flex flex-column align-items-start">
 
             <div class="form-check mb-2">
@@ -252,15 +223,15 @@
                     I agree to publish this dataset in the selected permanent storage service.
                 </label>
             </div>
-            
+
             {{ form.submit(class="btn btn-primary mt-3", id="upload_button", disabled=True) }}
-            
+
             <div id="loading" style="display: none" class="mt-2">
                 <img width="40px" src="{{ url_for("static", filename="gifs/loading.svg") }}"/>
                 Uploading dataset, please wait...
             </div>
         </div>
-        
+
     </form>
 
 {% endblock %}
@@ -273,83 +244,25 @@
         document.addEventListener('DOMContentLoaded', function () {
             feather.replace();
 
-            const storageSelect = document.getElementById('storage_service');
-            const fakeBlock = document.getElementById('fake-zenodo-block');
-            const connectBtn = document.getElementById('connectFakeZenodoBtn');
-            const statusSpan = document.getElementById('fakeZenodoStatus');
-            const zenodoConnectedInput = document.getElementById('zenodo_connected');
-
-            const agreeCheckbox = document.getElementById('agreeCheckbox'); 
+            const agreeCheckbox = document.getElementById('agreeCheckbox');
             const upload_button = document.getElementById('upload_button');
             const form = document.querySelector('form');
             const loadingDiv = document.getElementById('loading');
             const authorsDiv = document.getElementById('authors');
 
-            function updateFakeBlockVisibility() {
-                if (!storageSelect || !fakeBlock || !zenodoConnectedInput || !statusSpan) return;
-
-                if (storageSelect.value === 'zenodo') {
-                    fakeBlock.style.display = 'block';
-                } else {
-                    fakeBlock.style.display = 'none';
-                    // Reset estado de conexión cuando se cambia a GitHub
-                    zenodoConnectedInput.value = 'false';
-                    statusSpan.textContent = 'Not connected';
-                    statusSpan.classList.remove('text-success', 'text-danger');
-                    statusSpan.classList.add('text-muted');
-                }
-            }
-
             function updateUploadButtonState() {
                 if (!upload_button) return;
-
-                const storage = storageSelect ? storageSelect.value : 'zenodo';
                 const agreeOk = !agreeCheckbox || agreeCheckbox.checked;
-                let enabled = agreeOk;
-
-                // Si el servicio es Zenodo, además exigimos conexión FakeNODO
-                if (enabled && storage === 'zenodo') {
-                    enabled = (zenodoConnectedInput && zenodoConnectedInput.value === 'true');
-                }
-
-                upload_button.disabled = !enabled;
+                upload_button.disabled = !agreeOk;
             }
 
             // Inicialización estado
-            updateFakeBlockVisibility();
             updateUploadButtonState();
-
-            if (storageSelect) {
-                storageSelect.addEventListener('change', function () {
-                    updateFakeBlockVisibility();
-                    updateUploadButtonState();
-                });
-            }
 
             if (agreeCheckbox) {
                 agreeCheckbox.addEventListener('change', updateUploadButtonState);
             }
 
-            if (connectBtn && zenodoConnectedInput && statusSpan) {
-                connectBtn.addEventListener('click', function () {
-                    // Opcional: probar conexión real a Zenodo/FakeNODO si existe la función global
-                    if (typeof test_zenodo_connection === 'function') {
-                        try {
-                            test_zenodo_connection();
-                        } catch (e) {
-                            console.error('Error calling test_zenodo_connection:', e);
-                        }
-                    }
-
-                    zenodoConnectedInput.value = 'true';
-                    statusSpan.textContent = 'Connected (FakeNODO)';
-                    statusSpan.classList.remove('text-muted', 'text-danger');
-                    statusSpan.classList.add('text-success');
-
-                    updateUploadButtonState();
-                });
-            }
-            
             // Show "loading" when submitting
             if (form && upload_button && loadingDiv) {
                 form.addEventListener('submit', function() {
@@ -357,7 +270,7 @@
                     loadingDiv.style.display = 'block';
                 });
             }
-            
+
             // Lógica para eliminar autores dinámicamente
             if (authorsDiv) {
                 authorsDiv.addEventListener('click', function(e) {

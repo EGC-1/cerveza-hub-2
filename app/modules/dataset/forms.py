@@ -71,8 +71,8 @@ class DataSetForm(FlaskForm):
     storage_service = SelectField(
         "Permanent storage service",
         choices=[
-            ("zenodo", "Zenodo (via FakeNODO)"),
-            ("github", "GitHub (repository backup)"),
+            ("zenodo", "Zenodo"),
+            ("github", "GitHub"),
         ],
         default="none",
     )
