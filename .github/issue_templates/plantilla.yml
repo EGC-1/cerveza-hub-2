@@ -1,0 +1,93 @@
+name: Feature Request or Bug Report
+description: Suggest an enhancement or report an issue that needs fixing.
+title: "[TYPE]: Concise Title Describing the Issue"
+labels: ["triage"]
+assignees: []
+
+body:
+  # 1. Mandatory Description Section
+  - type: markdown
+    attributes:
+      value: |
+        ## 📝 Description (Mandatory)
+        Please provide a clear and concise description of the request or the problem you are encountering.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is the core problem, or what new capability should be added?
+      placeholder: Describe the issue clearly...
+    validations:
+      required: true
+
+  # 2. Optional Detail Section
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ## 📋 Detail (Optional)
+        Provide any extra context, steps to reproduce (for bugs), or detailed specifications (for features).
+
+  - type: textarea
+    id: detail
+    attributes:
+      label: Further Details/Steps to Reproduce (Optional)
+      description: Use this space for steps to reproduce a bug, detailed specifications for a feature, or screenshots.
+      placeholder: E.g., 1. Go to 'X' page. 2. Click on 'Y' button. 3. Observe Z error...
+    validations:
+      required: false
+
+  
+  - type: dropdown
+    id: type
+    attributes:
+      label: Core Task Type
+      description: Select the core nature of this issue (mandatory, single selection).
+      options:
+        - feature
+        - bug
+        - task
+    validations:
+      required: true
+      
+   
+  - type: checkboxes
+    id: additional_labels
+    attributes:
+      label: Additional Labels
+      description: Select all relevant labels that describe this issue.
+      options:
+        - label: test
+        - label: bug
+        - label: CI/CD
+        - label: documentation
+        - label: WI_Easy
+        - label: WI_High
+        - label: WI_Mandatory
+        - label: WI_Medium
+    validations:
+      required: false 
+  
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How critical is this issue? (mandatory priority label)
+      options:
+        - P0: Critical
+        - P1: High
+        - P2: Medium
+        - P3: Low
+    validations:
+      required: true
+
+  # 6. Confirmation Checkbox List
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirmation
+      description: Please confirm the following.
+      options:
+        - label: I have searched the existing issues and this is not a duplicate.
+          required: true
