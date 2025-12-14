@@ -10,7 +10,7 @@ except ImportError as e:
     print(f"Error importando AuthUser: {e}")
 
 try:
-    from app.modules.dataset.tests.locustfile import CommunityUser, DatasetUser, GithubDatasetUser
+    from app.modules.dataset.tests.locustfile import CommunityUser, DatasetUser, GithubDatasetUser, DownloadCounterUser
 except ImportError as e:
     print(f"Error importando usuarios desde Dataset: {e}")
 
@@ -23,3 +23,4 @@ CommunityUser.weight = 1
 DatasetUser.weight = 1
 ExploreUser.weight = 1
 GithubDatasetUser.weight = 1
+DownloadCounterUser.weight = 1
