@@ -28,14 +28,67 @@
     {% endwith %}
 
     <div class="row">
-       
         <div class="col-12 col-lg-6">
-            <div class="card">
+            <div class="card border-primary mb-4">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Active Sessions</h5>
+                    <h5 class="card-title mb-0">Current Session ({{current_device.ip}})</h5>
                 </div>
                 <div class="card-body">
-                    <p>Aquí es donde se listarán y gestionarán las sesiones activas en otros dispositivos.</p>
+                  {% if current_device %}
+                    <p class="card-text mb-1"><strong>Device:</strong> {{ current_device.device }}</p>
+                    <p class="card-text mb-1"><strong>IP:</strong> {{ current_device.ip }}</p>
+                    <p class="small text-muted">Login time: {{ current_device.time }}</p>
+                    <span class="badge bg-primary">Current session</span>
+                  {% else %}
+                    <p class="text-danger">The information for the current session could not be retrieved.</p>
+                  {% endif %}
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Other active Session ({{ sessions|length }})</h5>
+                </div>
+                <div class="card-body">
+                  {% if sessions %}
+                    <p class="text-danger small mb-3">Close any session you don't recognize.</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Device</th>
+                                    <th>IP</th>
+                                    <th>Time</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions %}
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-{{ 'mobile-alt' if 'Mobile' in session.device or 'Android' in session.device else 'laptop' }}"></i>
+                                            {{ session.device | truncate(35, True) }}
+                                        </td>
+                                        <td>{{ session.ip }}</td>
+                                        <td><span title="{{ session.time }}">{{ session.time }}</span></td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('profile.close_remote_session') }}" style="display: inline;">
+                                                <input type="hidden" name="session_key" value="{{ session.key }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                        title="Close session in this device"
+                                                        onclick="return confirm('Confirm remotely logout?');">
+                                                    Close
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                  {% else %}
+                    <div class="alert alert-success mb-0">
+                        Everything looks good! No other active sessions found.
+                    </div>
                 </div>
             </div>
             
@@ -46,6 +99,7 @@
             {% endif %}
 
         </div>
+        {% endif %}
     </div>
 {% endblock %}
 

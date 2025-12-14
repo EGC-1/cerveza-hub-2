@@ -1,3 +1,4 @@
+from curses import flash
 from flask import redirect, render_template, request, url_for, session
 from flask_login import current_user, login_required
 
@@ -27,25 +28,6 @@ def edit_profile():
 
     return render_template("profile/edit.html", form=form)
 
-
-@profile_bp.route("/profile/manage_account", methods=["GET", "POST"])
-@login_required
-def manage_account():
-    auth_service = AuthenticationService()
-    profile = auth_service.get_authenticated_user_profile
-    if not profile:
-        return redirect(url_for("public.index"))
-
-    form = UserProfileForm()
-    
-    if request.method == "POST":
-        service = UserProfileService()
-        result, errors = service.update_profile(profile.id, form)
-        return service.handle_service_response(
-            result, errors, "profile.edit_profile", "Profile updated successfully", "profile/edit.html", form
-        )
-    return render_template("profile/manage_account.html", form=form)
-
 @profile_bp.route("/profile/summary")
 @login_required
 def my_profile():
@@ -72,25 +54,62 @@ def my_profile():
         total_datasets=total_datasets_count,
     )
 
-@profile_bp.route("/profile/manage_account/sessions")
+@profile_bp.route("/profile/manage_account", methods=["GET", "POST"])
+@login_required
+def manage_account(active_tab='profile'):
+    auth_service = AuthenticationService()
+    profile_service = UserProfileService()
+    user = auth_service.get_authenticated_user()
+    profile = auth_service.get_authenticated_user_profile()
+    
+    if not profile:
+        return redirect(url_for("public.index"))
+
+    form = UserProfileForm()
+    
+    if request.method == "POST":
+        result, errors = profile_service.update_profile(profile.id, form)
+        return profile_service.handle_service_response(
+            result, errors, "profile.manage_account", "Profile updated successfully", "profile/manage_account.html", form
+        )
+    return render_template(
+        "profile/manage_account.html", 
+        form=form,
+        active_tab = "profile",
+        current_device= None,
+        sessions = [],
+        error = None)
+
+@profile_bp.route("/profile/manage_account/sessions", methods=["GET"])
 @login_required
 def manage_sessions():
     """
     Render the manage sessions page for the authenticated user.
     """
-    current_session_key = session.sid
-    service = UserProfileService()
-    sessions, current_device_info = service.get_active_sessions(
-        user_id = current_user.id,
-        current_session_key = current_session_key,
-        current_ip = request.remote_addr
-    )
+    profile_service = UserProfileService()
+    user = current_user
+    current_device = None
+    sessions = []
+    error = None
+
+    try:
+        current_device, sessions = profile_service.get_active_sessions(
+            user_id=user.id,
+            user_agent= request.user_agent.string,
+            ip_address = request.remote_addr,
+            current_session_key=session.sid
+        )
+    except Exception as e:
+        error = "Sessions could not been retrieved"
+        current_app.logger.error(f"Error retrieving sessions: {e}")
+
     return render_template(
         "profile/manage_account.html", 
-        active_tab = "sessions",
+        form=UserProfileForm(),
+        active_tab="sessions",
+        current_device = current_device,
         sessions = sessions,
-        current_device = current_device_info,
-        total_sessions = len(sessions) + 1
+        error = error
         )
 
 @profile_bp.route("/profile/manage_account/close_session", methods = ["POST"])
@@ -99,11 +118,15 @@ def close_remote_session():
     """
     Close a remote session for the authenticated user
     """
+    profile_service = UserProfileService()
+    user = current_user
+    
     session_key_to_close = request.form.get("session_key")
     if session_key_to_close:
-        service = UserProfileService()
-        result, errors = service.terminate_session(
-            user_id = current_user.id,
-            session_key_to_close = session_key_to_close
-        )
+        if profile_service.terminate_session(user.id, session_key_to_close):
+            flash("Session closed successfully", "success")
+        else:
+            flash("Failed to close the session", "error")
+    else:
+        flash("No session key provided", "error")
     return redirect(url_for("profile.manage_sessions"))
