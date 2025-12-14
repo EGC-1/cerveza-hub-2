@@ -39,7 +39,7 @@ chico sundermann">
     <nav id="sidebar" class="sidebar js-sidebar">
         <div class="sidebar-content js-simplebar">
     <div style="display: flex; align-items: center;">
-        <a class="sidebar-brand" href="{{ url_for('public.index') }}" style="flex-shrink: 0;">
+        <a class="sidebar-brand" href="{{ url_for('explore.index') }}" style="flex-shrink: 0;">
             <img src="{{ url_for("static", filename="img/logos/newLogo1.png") }}" 
                  class="d-block"
                  style="max-width: 50px; height: auto; margin-right: -12px;"> 
@@ -54,8 +54,8 @@ chico sundermann">
                     Datasets
                 </li>
 
-                <li class="sidebar-item {{ 'active' if request.endpoint == 'public.index' else '' }}">
-                    <a class="sidebar-link" href="{{ url_for('public.index') }}">
+                <li class="sidebar-item {{ 'active' if request.endpoint == 'explore.index' else '' }}">
+                    <a class="sidebar-link" href="{{ url_for('explore.index') }}">
                         <i class="align-middle" data-feather="home"></i> <span class="align-middle">Home</span>
                     </a>
                 </li>
@@ -138,8 +138,8 @@ chico sundermann">
                         </a>
                     </li>
 
-                    <li class="sidebar-item {{ 'active' if request.endpoint == 'profile.manage_account' else '' }}">
-                        <a class="sidebar-link" href="{{ url_for('profile.manage_account') }}">
+                    <li class="sidebar-item {{ 'active' if request.endpoint == 'profile.manage_sessions' else '' }}">
+                        <a class="sidebar-link" href="{{ url_for('profile.manage_sessions') }}">
                             <i class="align-middle" data-feather="settings"></i> <span
                                  class="align-middle">Manage Sessions</span>
                         </a>

@@ -36,7 +36,11 @@ class UserSessionRepository(BaseRepository):
             user_agent = user_agent
         )
         self.session.add(session_obj)
-        self.session.commit()
+        try:
+            self.session.commit()
+        except Exception as e:
+            self.session.rollback()
+            raise e
         return session_obj
 
     def get_by_user_id(self, user_id: int) -> list[UserSession]:

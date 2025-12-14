@@ -21,13 +21,9 @@ class UserProfileService(BaseService):
         """
         Retrieve active sessions for a user, excluding the current session
         """
-        sessions_data = self.auth_service.get_other_active_sessions(user_id, current_session_key)
-        current_device_info = {
-            'device': request.user_agent.string,
-            'ip': current_ip,
-            'is_current': True
-        }
-        return sessions_data, current_device_info
+        current_device_info = self.auth_service.get_current_session_info(current_session_key, current_ip)
+        other_sessions_data = self.auth_service.get_other_active_sessions(user_id, current_session_key)
+        return current_device_info, other_sessions_data
 
     def terminate_session(self, user_id: int, session_key_to_close: str):
         """
@@ -35,8 +31,9 @@ class UserProfileService(BaseService):
         """
         try:
             success = self.auth_service.close_remote_session(user_id, session_key_to_close)
-            if not success:
-                return False, "Failed to terminate the session"
-            return True, None
+            if success:
+                return True, "Session closed successfully."
+            else:
+                return False, "Failed to terminate the session. It might have already been closed or does not exist."
         except Exception as e:
             return False, str(e)

@@ -28,6 +28,11 @@ class AuthenticationService(BaseService):
         user = self.repository.get_by_email(email)
         if user is not None and user.check_password(password):
             login_user(user, remember=remember)
+            # After login_user, the session is active. Now we can save it.
+            # We generate a new unique key for this specific login event.
+            session_key = secrets.token_hex(16)
+            session['user_session_key'] = session_key
+
             try: 
                 session_key = request.cookies.get(current_app.config.get('SESSION_COOKIE_NAME', 'session'))
                 self.user_session_repository.save_session(
@@ -37,9 +42,32 @@ class AuthenticationService(BaseService):
                     user_agent=request.user_agent.string
                 )
             except Exception as e:
-                current_app.logger.error(f"Error saving user session for user {user.email}: {e}")
+                current_app.logger.error(f"Failed to save session for user {user.email}: {e}")
             return True
         return False
+
+    def get_current_session_info(self, current_session_key: str, current_ip: str) -> dict | None:
+        """
+        Busca y formatea la información de la sesión actual del usuario.
+        Si no la encuentra en la BD, construye una respuesta temporal con la info disponible.
+        """
+        session_db = self.user_session_repository.get_session_by_key(session_key=session.get('user_session_key'))
+
+        if session_db:
+            return {
+                'key': session_db.session_key,
+                'device': session_db.user_agent,
+                'ip': session_db.ip_address,
+                'time': session_db.login_time.isoformat(),
+                'is_current': True
+            }
+        return {
+            'key': session.get('user_session_key'),
+            'device': request.user_agent.string,
+            'ip': current_ip,
+            'time': 'Ahora',
+            'is_current': True
+        }
 
     def is_email_available(self, email: str) -> bool:
         return self.repository.get_by_email(email) is None
@@ -151,7 +179,8 @@ class AuthenticationService(BaseService):
                     'key': s.session_key,
                     'device': s.user_agent,
                     'ip': s.ip_address,
-                    'time': s.login_time.strftime("%Y-%m-%d %H:%M:%S")
+                    'time': s.login_time.isoformat(),
+                    'is_current': False
                 })
         return other_sessions
 
@@ -162,7 +191,17 @@ class AuthenticationService(BaseService):
         session_to_check = self.user_session_repository.get_session_by_key(session_key= session_key_to_close)
         if not session_to_check or session_to_check.user_id != user_id:
             return False
-        return self.user_session_repository.delete_by_key(session_key_to_close)
+        deleted = self.user_session_repository.delete_by_key(session_key_to_close)
+        if deleted:
+            self.repository.session.commit()
+        return deleted
+
+    def is_session_valid(self, session_key: str) -> bool:
+        """
+        Checks if a session key exists in the database.
+        """
+        session_db = self.user_session_repository.get_session_by_key(session_key=session_key)
+        return session_db is not None
 
 authentication_service = AuthenticationService()
 
