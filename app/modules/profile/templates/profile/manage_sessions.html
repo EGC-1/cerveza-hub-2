@@ -96,7 +96,6 @@
 {{ super() }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Selecciona todos los elementos que necesitan conversión de fecha
         const timeElements = document.querySelectorAll('.local-time');
 
         timeElements.forEach(function(element) {
@@ -104,10 +103,14 @@
             if (utcDateString && utcDateString !== 'Ahora') {
                 const date = new Date(utcDateString);
                 
-                // Formatea la fecha y hora en un formato legible local
-                const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-                element.textContent = date.toLocaleDateString(undefined, options);
-                element.title = date.toString(); // El tooltip mostrará la fecha completa con la zona horaria
+                const options = {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    hour12: false,
+                    timeZone: 'Europe/Madrid' 
+                };
+                element.textContent = date.toLocaleString('es-ES', options);
+                element.title = date.toString(); 
             } else if (utcDateString === 'Ahora') {
                 element.textContent = 'Ahora';
             }
