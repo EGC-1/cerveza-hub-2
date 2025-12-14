@@ -5,12 +5,12 @@ from flask_login import current_user, login_user
 
 from app.modules.auth.models import User, Role 
 from app import db 
-from app.modules.auth.repositories import UserRepository
+from app.modules.auth.repositories import UserRepository, UserSessionRepository
 from app.modules.profile.models import UserProfile
 from app.modules.profile.repositories import UserProfileRepository
 from core.configuration.configuration import uploads_folder_name
 from core.services.BaseService import BaseService
-from flask import url_for, current_app, render_template
+from flask import url_for, current_app, render_template, request, session
 # Solo necesitamos la clase Message de flask_mail para construir el email
 from flask_mail import Message 
 
@@ -22,11 +22,21 @@ class AuthenticationService(BaseService):
         # Aquí inicializamos BaseService pasándole el repositorio obligatorio.
         super().__init__(repository=UserRepository()) 
         self.user_profile_repository = UserProfileRepository()
+        self.user_session_repository = UserSessionRepository()
 
     def login(self, email, password, remember=True):
         user = self.repository.get_by_email(email)
         if user is not None and user.check_password(password):
             login_user(user, remember=remember)
+            try: 
+                self.user_session_repository.save_session(
+                    user_id = user.id,
+                    session_key=session_id,
+                    ip_address=request.remote_addr,
+                    user_agent=request.user_agent.string
+                )
+            except Exception as e:
+                current_app.logger.error(f"Error saving user session for user {user.email}: {e}")
             return True
         return False
 
@@ -127,6 +137,31 @@ class AuthenticationService(BaseService):
         Busca y retorna un usuario por su dirección de correo electrónico.
         """
         return User.query.filter_by(email=email).first()
+
+    def get_other_active_sessions(self, user_id: int, current_session_key: str) -> list[dict]:
+        """
+        Recupera todas las sesiones activas de un usuario, excluyendo la sesión actual
+        """
+        sessions = self.user_session_repository.get_by_user_id(user_id)
+        other_sessions = []
+        for s in sessions:
+            if s.session_key != current_session_key:
+                other_sessions.append({
+                    'key': s.session_key,
+                    'device': s.user_agent,
+                    'ip': s.ip_address,
+                    'time': s.login_time.strftime("%Y-%m-%d %H:%M:%S")
+                })
+        return other_sessions
+
+    def close_remote_session(self, user_id: int, session_key_to_close: str) -> bool:
+        """
+        Elimina el registro de la bd
+        """
+        session_to_check = self.user_session_repository.get_session_by_key(session_key= session_key_to_close)
+        if not session_to_check or session_to_check.user_id != user_id:
+            return False
+        return self.user_session_repository.delete_by_key(session_key_to_close)
 
 authentication_service = AuthenticationService()
 

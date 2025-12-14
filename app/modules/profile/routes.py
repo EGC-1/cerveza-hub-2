@@ -1,4 +1,4 @@
-from flask import redirect, render_template, request, url_for
+from flask import redirect, render_template, request, url_for, session
 from flask_login import current_user, login_required
 
 from app import db
@@ -71,3 +71,39 @@ def my_profile():
         pagination=user_datasets_pagination,
         total_datasets=total_datasets_count,
     )
+
+@profile_bp.route("/profile/manage_account/sessions")
+@login_required
+def manage_sessions():
+    """
+    Render the manage sessions page for the authenticated user.
+    """
+    current_session_key = session.sid
+    service = UserProfileService()
+    sessions, current_device_info = service.get_active_sessions(
+        user_id = current_user.id,
+        current_session_key = current_session_key,
+        current_ip = request.remote_addr
+    )
+    return render_template(
+        "profile/manage_account.html", 
+        active_tab = "sessions",
+        sessions = sessions,
+        current_device = current_device_info,
+        total_sessions = len(sessions) + 1
+        )
+
+@profile_bp.route("/profile/manage_account/close_session", methods = ["POST"])
+@login_required
+def close_remote_session():
+    """
+    Close a remote session for the authenticated user
+    """
+    session_key_to_close = request.form.get("session_key")
+    if session_key_to_close:
+        service = UserProfileService()
+        result, errors = service.terminate_session(
+            user_id = current_user.id,
+            session_key_to_close = session_key_to_close
+        )
+    return redirect(url_for("profile.manage_sessions"))
