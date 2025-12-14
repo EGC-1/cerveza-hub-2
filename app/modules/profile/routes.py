@@ -93,11 +93,12 @@ def manage_sessions():
     error = None
 
     try:
+        session_key = request.cookies.get(current_app.config.get('SESSION_COOKIE_NAME', 'session'))
         current_device, sessions = profile_service.get_active_sessions(
             user_id=user.id,
             user_agent= request.user_agent.string,
             ip_address = request.remote_addr,
-            current_session_key=session.sid
+            current_session_key=session_key
         )
     except Exception as e:
         error = "Sessions could not been retrieved"

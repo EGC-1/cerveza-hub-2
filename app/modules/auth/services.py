@@ -29,9 +29,10 @@ class AuthenticationService(BaseService):
         if user is not None and user.check_password(password):
             login_user(user, remember=remember)
             try: 
+                session_key = request.cookies.get(current_app.config.get('SESSION_COOKIE_NAME', 'session'))
                 self.user_session_repository.save_session(
                     user_id = user.id,
-                    session_key=session_sid,
+                    session_key=session_key,
                     ip_address=request.remote_addr,
                     user_agent=request.user_agent.string
                 )
