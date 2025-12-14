@@ -13,7 +13,7 @@ def role_admin_check():
     """Redirige al usuario si no es administrador."""
     if not is_admin():
         flash('Acceso denegado. Se requiere rol de administrador.', 'danger')
-        return redirect(url_for('main.index')) 
+        return redirect(url_for('public.index')) 
     return None 
 
 
@@ -33,42 +33,42 @@ def admin_index():
 @login_required 
 def edit_user(user_id):
     response = role_admin_check()
-    if response:
-        return response
+    if response: return response
         
     users = User.query.all() 
-    
     user = User.query.filter_by(id=user_id).first_or_404()
     form = UserAdminForm()
 
+    # Cargar opciones
     all_roles = Role.query.all()
     form.roles.choices = [(str(role.id), role.name) for role in all_roles] 
 
     if form.validate_on_submit():
-        
         user.email = form.email.data
         
-        selected_role_id_str = form.roles.data[0] if form.roles.data else None 
-        
-        if selected_role_id_str:
-            selected_role_id = int(selected_role_id_str)
+        # --- CORRECCIÓN 1 (POST): Leer el dato directamente ---
+        # Al ser SelectField, .data ya es el string "2", no una lista ["2"]
+        if form.roles.data:
+            selected_role_id = int(form.roles.data)
             new_role = Role.query.get(selected_role_id)
             user.role = new_role 
         else:
             user.role = None
+        # ------------------------------------------------------
         
         db.session.commit()
         flash(f'Usuario {user.email} actualizado exitosamente.', 'success')
-        
         return redirect(url_for('admin.admin_index'))
 
     elif request.method == 'GET':
-        
         form.email.data = user.email
         
-        current_role_id_str = str(user.role.id) if user.role else None
-        
-        form.roles.data = [current_role_id_str] if current_role_id_str else []
+        # --- CORRECCIÓN 2 (GET): Asignar valor sin corchetes ---
+        if user.role:
+            # Pasamos el ID directamente como string. 
+            # ANTES: form.roles.data = [str(user.role.id)]  <-- ERROR: Esto era para SelectMultipleField
+            form.roles.data = str(user.role.id)           # <-- CORRECTO: Esto es para SelectField
+        # -------------------------------------------------------
 
     return render_template('user_management.html', 
                              title='Editar Usuario', 
