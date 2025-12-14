@@ -31,7 +31,7 @@ class AuthenticationService(BaseService):
             try: 
                 self.user_session_repository.save_session(
                     user_id = user.id,
-                    session_key=session_id,
+                    session_key=session_sid,
                     ip_address=request.remote_addr,
                     user_agent=request.user_agent.string
                 )
