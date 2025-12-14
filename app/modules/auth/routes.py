@@ -32,7 +32,7 @@ def check_active_session():
 @auth_bp.route("/signup/", methods=["GET", "POST"])
 def show_signup_form():
     if current_user.is_authenticated:
-        return redirect(url_for("explore.index"))
+        return redirect(url_for("public.index"))
 
     form = SignupForm()
     if form.validate_on_submit():
@@ -48,7 +48,7 @@ def show_signup_form():
         # Log user
         login_user(user, remember=True)
         session['user_session_key'] = authentication_service.create_session(user.id)
-        return redirect(url_for("explore.index"))
+        return redirect(url_for("public.index"))
 
     return render_template("auth/signup_form.html", form=form)
 
@@ -56,7 +56,7 @@ def show_signup_form():
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for("explore.index"))
+        return redirect(url_for("public.index"))
 
     form = LoginForm()
     if request.method == "POST" and form.validate_on_submit():
@@ -66,7 +66,7 @@ def login():
             login_user(user, remember=True)
             session['user_session_key'] = authentication_service.create_session(user.id)
 
-            return redirect(url_for("explore.index"))
+            return redirect(url_for("public.index"))
 
 
         return render_template("auth/login_form.html", form=form, error="Invalid credentials")
@@ -77,7 +77,7 @@ def login():
 @auth_bp.route("/logout")
 def logout():
     logout_user()
-    return redirect(url_for("explore.index"))
+    return redirect(url_for("public.index"))
 
 @auth_bp.route("/recover", methods=["GET", "POST"])
 def forgot_password_request():
@@ -86,7 +86,9 @@ def forgot_password_request():
     Si el email existe, envía el enlace de restablecimiento.
     """
     if current_user.is_authenticated:
-        return redirect(url_for("explore.index"))
+        # Esta ruta es llamada por test_recover_password_get_authenticated_redirects
+        return redirect(url_for("public.index"))
+    
     form = RequestResetForm()
     
     if form.validate_on_submit():
@@ -117,7 +119,8 @@ def reset_token(token):
     2. Si es válido, permite al usuario establecer una nueva contraseña.
     """
     if current_user.is_authenticated:
-        return redirect(url_for("explore.index"))
+        # Esta ruta es llamada por test_reset_token_get_authenticated_redirects
+        return redirect(url_for("public.index"))
 
     user: User = User.verify_reset_token(token)
 

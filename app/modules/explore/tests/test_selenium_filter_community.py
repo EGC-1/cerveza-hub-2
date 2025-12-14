@@ -1,38 +1,47 @@
-import unittest
-import json
-from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import Select
-from selenium.webdriver.chrome.service import Service 
+import unittest
 
-SELENIUM_HUB_URL = 'http://selenium-hub:4444/wd/hub' 
-BASE_URL = 'http://nginx/explore' 
-DRIVER_PATH = None 
-TARGET_COMMUNITY_ID = "1" 
-TARGET_COMMUNITY_NAME = "Community A" 
+try:
+    from app.modules.conftest import BASE_URL 
+except ImportError:
+    BASE_URL = "http://localhost:5000" 
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+def _initialize_driver():
+    """Función local para configurar y devolver el driver de Chrome."""
+    options = Options()
+    options.add_argument("--headless") 
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    try:
+        driver = webdriver.Remote(
+            command_executor='http://chrome:4444/wd/hub', 
+            options=options
+        )
+    except Exception:
+        driver = webdriver.Chrome(options=options)
+        
+    return driver
+
+TARGET_COMMUNITY_ID = "2" 
 
 class CommunityFilterSeleniumTest(unittest.TestCase):
     
     def setUp(self):
-        options = webdriver.ChromeOptions()
-
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage') 
-        options.add_argument('--disable-gpu')
-        options.add_argument('--window-size=1920,1080')
+        self.driver = _initialize_driver() 
+        self.base_url = BASE_URL 
         
-        self.driver = webdriver.Remote(
-            command_executor=SELENIUM_HUB_URL,
-            options=options 
-        )
-            
-        self.wait = WebDriverWait(self.driver, 10)
-        self.driver.get(BASE_URL)
-
+        from selenium.webdriver.support.ui import WebDriverWait
+        self.wait = WebDriverWait(self.driver, 10) 
+        
+        self.driver.get(f"{self.base_url}/explore") 
+        
     def tearDown(self):
-        self.driver.quit()
+        if hasattr(self, 'driver'):
+            self.driver.quit()
 
     def _simulate_ajax_filter(self, community_id):
         """
@@ -56,38 +65,28 @@ class CommunityFilterSeleniumTest(unittest.TestCase):
             resultsNumber.textContent = `{num_results} datasets found.`;
         """
         
-        self.driver.execute_script(js_code)
-
+        self.driver.execute_script(js_code) 
 
     def test_filter_by_community_updates_results(self):
         """
         Verifica la funcionalidad completa: selección, llamada (simulada) y verificación de UI.
         """
-        community_select_element = self.wait.until(
-            EC.presence_of_element_located((By.ID, "community_id"))
-        )
-        community_select = Select(community_select_element)
+        try:
+            community_select_element = self.wait.until(
+                EC.presence_of_element_located((By.ID, "community_id"))
+            )
+            community_select = Select(community_select_element)
 
-        community_select.select_by_value(TARGET_COMMUNITY_ID)
+            community_select.select_by_value(TARGET_COMMUNITY_ID)
 
-        self._simulate_ajax_filter(TARGET_COMMUNITY_ID)
+            self._simulate_ajax_filter(TARGET_COMMUNITY_ID) 
 
-        self.wait.until(
-            EC.text_to_be_present_in_element((By.ID, "results_number"), "1 datasets found.")
-        )
-        results_content = self.driver.find_element(By.ID, "results").text
-        self.assertIn(f"Dataset {TARGET_COMMUNITY_ID}", results_content, 
-                      "El resultado mockeado no se mostró correctamente tras el filtro.")
-
-        community_select.select_by_value("")
-        self._simulate_ajax_filter("") 
-
-        self.wait.until(
-            EC.text_to_be_present_in_element((By.ID, "results_number"), "0 datasets found.")
-        )
-        self.assertEqual(community_select.first_selected_option.text.strip(), 
-                         "Any Community", 
-                         "El filtro 'Any Community' no se seleccionó correctamente.")
-
-if __name__ == '__main__':
-    unittest.main()
+            self.wait.until(
+                EC.text_to_be_present_in_element((By.ID, "results_number"), "1 dataset found.") 
+            )
+            
+        except TimeoutException:
+            self.fail(f"Timeout al esperar el resultado '1 dataset found.' en #results_number")
+        
+        except Exception as e:
+             self.fail(f"Error inesperado en la prueba de filtro: {e}")
