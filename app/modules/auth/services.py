@@ -28,23 +28,43 @@ class AuthenticationService(BaseService):
         user = self.repository.get_by_email(email)
         if user is not None and user.check_password(password):
             login_user(user, remember=remember)
-            # After login_user, the session is active. Now we can save it.
-            # We generate a new unique key for this specific login event.
-            session_key = secrets.token_hex(16)
-            session['user_session_key'] = session_key
-
-            try: 
-                session_key = request.cookies.get(current_app.config.get('SESSION_COOKIE_NAME', 'session'))
-                self.user_session_repository.save_session(
-                    user_id = user.id,
-                    session_key=session_key,
-                    ip_address=request.remote_addr,
-                    user_agent=request.user_agent.string
-                )
+            try:
+                self.create_session(user.id)
             except Exception as e:
-                current_app.logger.error(f"Failed to save session for user {user.email}: {e}")
+                current_app.logger.error(f"Failed to create session for user {user.email}: {e}")
             return True
         return False
+
+    def create_session(self, user_id: int) -> str:
+        """
+        Crea y persiste una sesión de usuario, guarda la clave en `session` y
+        devuelve la clave de sesión usada.
+        """
+        # Intentamos recuperar la cookie de sesión de Flask; si no existe, generamos una.
+        session_key = request.cookies.get(current_app.config.get('SESSION_COOKIE_NAME', 'session'))
+        if not session_key:
+            session_key = secrets.token_hex(16)
+
+        # Guardamos la clave en la sesión del cliente para referencias posteriores.
+        session['user_session_key'] = session_key
+
+        try:
+            self.user_session_repository.save_session(
+                user_id=user_id,
+                session_key=session_key,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string
+            )
+            # Commit en el repositorio si es necesario
+            try:
+                self.repository.session.commit()
+            except Exception:
+                # Si el commit falla, hacemos rollback y seguimos devolviendo la clave
+                self.repository.session.rollback()
+        except Exception as e:
+            current_app.logger.error(f"Failed to save session for user id {user_id}: {e}")
+
+        return session_key
 
     def get_current_session_info(self, current_session_key: str, current_ip: str) -> dict | None:
         """

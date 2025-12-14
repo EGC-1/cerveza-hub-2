@@ -47,6 +47,7 @@ def show_signup_form():
 
         # Log user
         login_user(user, remember=True)
+        session['user_session_key'] = authentication_service.create_session(user.id)
         return redirect(url_for("explore.index"))
 
     return render_template("auth/signup_form.html", form=form)
@@ -59,8 +60,14 @@ def login():
 
     form = LoginForm()
     if request.method == "POST" and form.validate_on_submit():
-        if authentication_service.login(form.email.data, form.password.data):
+        credentials_are_valid = authentication_service.login(form.email.data, form.password.data)
+        if credentials_are_valid:
+            user = authentication_service.get_user_by_email(form.email.data)
+            login_user(user, remember=True)
+            session['user_session_key'] = authentication_service.create_session(user.id)
+
             return redirect(url_for("explore.index"))
+
 
         return render_template("auth/login_form.html", form=form, error="Invalid credentials")
 
