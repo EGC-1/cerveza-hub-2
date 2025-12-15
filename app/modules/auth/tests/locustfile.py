@@ -60,14 +60,14 @@ class AuthenticatedUserBehavior(TaskSet):
 
     def login_and_ensure_authenticated(self):
         """Intenta iniciar sesión o lo repite si es necesario."""
-        response = self.client.get("/login")
+        response = self.client.get("/login" , name="06. [GET] Obtener Formulario Login (Auth)")
         
         csrf_token = get_csrf_token(response)
 
         # Aquí asumes que el usuario existe
         response = self.client.post(
             "/login", data={"email": "user1@example.com", "password": "1234", "csrf_token": csrf_token},
-            name="/login [POST] AUTH"
+            name="/login [POST] Iniciar Sesión User Existente"
         )
         if response.status_code != 200:
             print(f"Login failed on start: {response.status_code}")
@@ -76,7 +76,7 @@ class AuthenticatedUserBehavior(TaskSet):
     @task(3)
     def visit_homepage(self):
         """Simula una tarea común que solo un usuario logueado haría."""
-        self.client.get("/", name="/ [Homepage Logged In]")
+        self.client.get("/", name="/ [GET] Página Inicio Logueado")
 
     # 3. Logout (Salir)
     @task(1)
@@ -163,7 +163,7 @@ class RecoverPasswordBehavior(TaskSet):
 
 
 class AuthUser(HttpUser):
-    tasks = [SignupBehavior, LoginBehavior]
+    tasks = [SignupBehavior, LoginBehavior, AuthenticatedUserBehavior, RecoverPasswordBehavior]
     min_wait = 5000
     max_wait = 9000
     host = get_host_for_locust_testing()

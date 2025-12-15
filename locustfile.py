@@ -19,6 +19,8 @@ try:
 except ImportError as e:
     print(f"Error importando usuarios desde Explore: {e}")
 
+
+AuthUser.weight = 1
 CommunityUser.weight = 1
 DatasetUser.weight = 1
 ExploreUser.weight = 1
