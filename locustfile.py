@@ -19,6 +19,11 @@ try:
 except ImportError as e:
     print(f"Error importando usuarios desde Explore: {e}")
 
+try:
+   from fakenodo.tests.locustfile import FakenodoUser
+except ImportError as e:
+   print(f"Error importando usuario Fakenodo: {e}")
+
 
 AuthUser.weight = 1
 CommunityUser.weight = 1
@@ -27,3 +32,4 @@ ExploreUser.weight = 1
 GithubDatasetUser.weight = 1
 DownloadCounterUser.weight = 1
 StatsUser.weight = 1
+FakenodoUser.weight = 1
