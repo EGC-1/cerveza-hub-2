@@ -14,8 +14,7 @@ class UserAdminForm(FlaskForm):
     
     roles = SelectField(
         'Rol',
-        choices=[], 
-        validate_choice=False 
+        choices=[]
     )
     
     submit = SubmitField('Guardar Cambios')
