@@ -87,7 +87,7 @@ class CommunityWorkflow(SequentialTaskSet):
         
         with self.client.post(register_url, data=data, catch_response=True) as post_response:
             if post_response.status_code == 200 and "signup" not in post_response.url:
-                logger.info(f"✅ Usuario registrado: {self.email}")
+                logger.info(f"Usuario registrado: {self.email}")
                 return True
             else:
                 post_response.failure("Fallo en registro")
@@ -149,7 +149,7 @@ class CommunityWorkflow(SequentialTaskSet):
                 if match:
                     self.community_id = match.group(1)
                     post_response.success()
-                    logger.info(f"✅ ÉXITO REAL: Comunidad creada ID {self.community_id}")
+                    logger.info(f"ÉXITO REAL: Comunidad creada ID {self.community_id}")
                 else:
                     post_response.success()
                     self.community_id = None 
@@ -320,13 +320,13 @@ class GithubDatasetUser(HttpUser):
     
 
 # ==============================================================================
-#  Download Counter with Shared Dataset ID
+#  Download Counter with Shared Dataset ID (Prefix: DC_)
 # ==============================================================================
 
-SHARED_DATASET_ID = None
-CREATION_LOCK = Semaphore()
-DATASET_CREATED = False
-SHARED_TITLE = f"MASTER_LOAD_{str(uuid.uuid4())[:6]}"
+DC_SHARED_DATASET_ID = None
+DC_CREATION_LOCK = Semaphore()
+DC_DATASET_CREATED = False
+DC_SHARED_TITLE = f"COUNTER_LOCUST_TEST_{str(uuid.uuid4())[:6]}"
 
 def get_csrf_token(html_text):
     if not isinstance(html_text, str): return None
@@ -356,39 +356,51 @@ class SharedDownloadWorkflow(SequentialTaskSet):
 
     @task
     def coordinator_task(self):
-        global SHARED_DATASET_ID, DATASET_CREATED
+        global DC_SHARED_DATASET_ID, DC_DATASET_CREATED
 
-        if SHARED_DATASET_ID:
+        if DC_SHARED_DATASET_ID:
             self._view_dataset()
             self._download_target()
             return
 
-        if not DATASET_CREATED:
-            if CREATION_LOCK.acquire(blocking=False):
+        if not DC_DATASET_CREATED:
+            if DC_CREATION_LOCK.acquire(blocking=False):
                 try:
-                    if not DATASET_CREATED:
-                        logger.info(f"[ELEGIDO] {self.email} intentará crear el dataset...")
+                    if not DC_DATASET_CREATED:
+                        logger.info(f"[LIDER] {self.email} creando dataset maestro para contador de descargas...")
                         self._create_master_dataset()
-                        DATASET_CREATED = True
+                        DC_DATASET_CREATED = True
                 finally:
-                    CREATION_LOCK.release()
+                    DC_CREATION_LOCK.release()
             else:
                 gevent.sleep(1)
         else:
             gevent.sleep(1)
 
     def _create_master_dataset(self):
-        global SHARED_DATASET_ID, SHARED_TITLE
-        
+        global DC_SHARED_DATASET_ID
         r = self.client.get("/dataset/upload")
         csrf = get_csrf_token(r.text)
         if not csrf: return
 
-        csv_file = io.BytesIO(b"col1,col2\nval1,val2")
+        header = "name,brewery,style,abv,ibu\n"
+        rows_data = [
+            "Heineken,Heineken Brouwerijen,Lager,5.0,19",
+            "Corona,Grupo Modelo,Lager,4.5,18",
+            "Mahou,Mahou San Miguel,Pilsner,5.5,25",
+            "Guinness,St James Gate,Stout,4.2,45",
+            "Stella Artois,Anheuser-Busch,Pilsner,5.0,24"
+        ]
+        csv_content = header
+        for _ in range(12): 
+            for row in rows_data:
+                csv_content += f"{row}\n"
+        csv_file = io.BytesIO(csv_content.encode('utf-8'))
+        
         files = {"csv_file": ("master.csv", csv_file, "text/csv")}
         
         data = {
-            "title": SHARED_TITLE,
+            "title": DC_SHARED_TITLE,
             "desc": "Selenium Test Description equivalent",
             "publication_type": "annotationcollection", 
             "tags": "load",
@@ -401,73 +413,212 @@ class SharedDownloadWorkflow(SequentialTaskSet):
             "submit": "Submit"
         }
         
-        upload_successful = False
-
-        with self.client.post("/dataset/upload", data=data, files=files, catch_response=True, allow_redirects=True) as res:
+        with self.client.post("/dataset/upload", data=data, files=files, catch_response=True, allow_redirects=True, name="/dataset/upload (Create DC Master)") as res:
             if res.status_code in (200, 302):
                 if res.status_code == 200 and "upload" in res.url:
                     errores = re.findall(r'class="text-danger">\s*(.*?)\s*<', res.text)
-                    logger.error(f"[CREAR] Falló validación: {errores}")
+                    logger.error(f"[CREAR DC] Falló validación: {errores}")
                     res.failure(f"Validation Error")
                     return
 
-                upload_successful = True
-                logger.info("[CREAR] Subida aceptada (HTTP OK).")
                 res.success()
-
                 m = re.search(r"/dataset/(?:unsynchronized/|download/)?(\d+)", res.url)
                 if m:
-                    SHARED_DATASET_ID = m.group(1)
-                    logger.info(f"[CREADO DIRECTO] ID: {SHARED_DATASET_ID}")
+                    DC_SHARED_DATASET_ID = m.group(1)
+                    logger.info(f"[CREADO DC] ID: {DC_SHARED_DATASET_ID}")
             else:
-                logger.error(f"[CREAR] Error HTTP {res.status_code}")
+                logger.error(f"[CREAR DC] Error HTTP {res.status_code}")
                 res.failure(f"HTTP {res.status_code}")
 
- 
-        if upload_successful and not SHARED_DATASET_ID:
-            logger.warning("ID no visto en redirección. Buscando en lista (Petición separada)...")
+        if not DC_SHARED_DATASET_ID:
             self._find_id_in_list_fallback()
 
     def _find_id_in_list_fallback(self):
-        global SHARED_DATASET_ID, SHARED_TITLE
-        
+        global DC_SHARED_DATASET_ID
         with self.client.get("/dataset/list", catch_response=True, name="/dataset/list (Fallback)") as list_res:
-            
-            if SHARED_TITLE in list_res.text:
+            if DC_SHARED_TITLE in list_res.text:
                 m = re.search(r'href=[\'"]/dataset/download/(\d+)[\'"]', list_res.text)
                 if m:
-                    SHARED_DATASET_ID = m.group(1)
-                    logger.info(f"[ENCONTRADO EN LISTA] ID: {SHARED_DATASET_ID}")
+                    DC_SHARED_DATASET_ID = m.group(1)
+                    logger.info(f"[ENCONTRADO DC] ID: {DC_SHARED_DATASET_ID}")
                     list_res.success()
                 else:
-                    logger.error(f"[FATAL] Veo el título pero no el botón.")
                     list_res.failure("Button missing")
             else:
-                logger.warning(f"El título '{SHARED_TITLE}' aún no aparece en la lista.")
                 list_res.success()
                 
     def _view_dataset(self):
-        url = f"/dataset/unsynchronized/{SHARED_DATASET_ID}/"
-        with self.client.get(url, catch_response=True, name="/dataset/view [Unique]") as res:
+        url = f"/dataset/unsynchronized/{DC_SHARED_DATASET_ID}/"
+        with self.client.get(url, catch_response=True, name="/dataset/view [DC]") as res:
             if res.status_code in (200, 302):
                 res.success()
             else:
                 res.failure(f"View failed: {res.status_code}")
 
     def _download_target(self):
-        url = f"/dataset/download/{SHARED_DATASET_ID}"
-        with self.client.get(url, catch_response=True, name="/dataset/download/MASTER") as response:
+        url = f"/dataset/download/{DC_SHARED_DATASET_ID}"
+        with self.client.get(url, catch_response=True, name="/dataset/download [DC]") as response:
             if response.status_code in (200, 302):
                 response.success()
             else:
                 response.failure(f"Error {response.status_code}")
-                
-    def get_csrf_token(html_text):
-        if not isinstance(html_text, str): return None
-        match = re.search(r'name=["\']csrf_token["\'][^>]*value=["\']([^"\']+)["\']', html_text)
-        return match.group(1) if match else None
 
 class DownloadCounterUser(HttpUser):
     tasks = [SharedDownloadWorkflow]
+    wait_time = between(1, 3)
+    host = get_host_for_locust_testing()
+
+
+# ==============================================================================
+#  Statistics Download Counter with Shared Dataset ID Prefix: STATS_
+# ==============================================================================
+
+STATS_SHARED_DATASET_ID = None
+STATS_CREATION_LOCK = Semaphore()
+STATS_DATASET_CREATED = False
+STATS_SHARED_TITLE = f"STATS_LOCUST_{str(uuid.uuid4())[:6]}"
+
+class StatsWorkflow(SequentialTaskSet):
+    email = None
+    password = None
+
+    def on_start(self):
+        rid = str(uuid.uuid4())[:8]
+        self.email = f"stats_{rid}@test.com"
+        self.password = "1234"
+        
+        self.register()
+        self.login()
+
+    def register(self):
+        r = self.client.get("/signup/")
+        csrf = get_csrf_token(r.text)
+        if csrf:
+            self.client.post("/signup/", data={
+                "email": self.email, "password": self.password, 
+                "confirm_password": self.password, "name": "Load", 
+                "surname": "Unique", "csrf_token": csrf, "submit": "Submit"
+            })
+
+    def login(self):
+        r = self.client.get("/auth/login")
+        if r.status_code != 200: r = self.client.get("/login")
+        csrf = get_csrf_token(r.text)
+        if csrf:
+            self.client.post("/login", data={
+                "email": self.email, "password": self.password, "csrf_token": csrf
+            })
+
+    @task
+    def flow_logic(self):
+        global STATS_SHARED_DATASET_ID, STATS_DATASET_CREATED
+
+        if not STATS_SHARED_DATASET_ID:
+            if not STATS_DATASET_CREATED:
+                if STATS_CREATION_LOCK.acquire(blocking=False):
+                    try:
+                        if not STATS_DATASET_CREATED:
+                            logger.info(f"[LIDER STATS] {self.email} creando dataset maestro...")
+                            self._create_master_dataset()
+                            STATS_DATASET_CREATED = True
+                    finally:
+                        STATS_CREATION_LOCK.release()
+                else:
+                    gevent.sleep(1)
+            else:
+                gevent.sleep(1) 
+            
+            if not STATS_SHARED_DATASET_ID:
+                 return 
+
+        self._view_dataset()
+        
+        self._download_dataset() 
+        logger.info(f"[STATS] {self.email} descargó el dataset {STATS_SHARED_DATASET_ID}")
+        
+        self._download_dataset() 
+        
+        self.interrupt()
+        
+    def _create_master_dataset(self):
+        global STATS_SHARED_DATASET_ID
+        
+        r = self.client.get("/dataset/upload")
+        if "/login" in r.url: return
+        csrf = get_csrf_token(r.text)
+        if not csrf: return
+
+        header = "name,brewery,style,abv,ibu\n"
+        rows_data = ["Heineken,Heineken,Lager,5.0,19", "Corona,Modelo,Lager,4.5,18"]
+        csv_content = header
+        for _ in range(20): 
+            for row in rows_data:
+                csv_content += f"{row}\n"
+        csv_file = io.BytesIO(csv_content.encode('utf-8'))
+        
+        files_dict = {"csv_file": ("master_stats.csv", csv_file, "text/csv")}
+        data = {
+            "title": STATS_SHARED_TITLE, "desc": "Stats", "publication_type": "annotationcollection", 
+            "tags": "stats", "storage_service": "zenodo", "agreeCheckbox": "y", 
+            "authors-0-name": "Bot", "authors-0-affiliation": "Lab", "authors-0-orcid": "", 
+            "csrf_token": csrf, "submit": "Submit"
+        }
+        
+        need_fallback = False
+
+        with self.client.post(
+            "/dataset/upload", 
+            data=data, 
+            files=files_dict, 
+            catch_response=True, 
+            allow_redirects=True, 
+            name="/dataset/upload (Create Stats Master)"
+        ) as res:
+            
+            if res.status_code in (200, 302) and "upload" not in res.url:
+                m = re.search(r"/dataset/(?:unsynchronized/|download/)?(\d+)", res.url)
+                if m: 
+                    STATS_SHARED_DATASET_ID = m.group(1)
+                    logger.info(f"[CREADO STATS] ID: {STATS_SHARED_DATASET_ID}")
+                    res.success()
+                else: 
+                    need_fallback = True
+                    res.success() 
+            else:
+                logger.error(f"[STATS] Fallo subida: {res.status_code}")
+                res.failure(f"HTTP {res.status_code}")
+
+        if need_fallback:
+            self._find_id_fallback()
+
+    def _find_id_fallback(self):
+        global STATS_SHARED_DATASET_ID
+        with self.client.get("/dataset/list", name="/dataset/list (Fallback Stats)") as res:
+            if STATS_SHARED_TITLE in res.text:
+                m = re.search(r'href=[\'"]/dataset/download/(\d+)[\'"]', res.text)
+                if m: 
+                    STATS_SHARED_DATASET_ID = m.group(1)
+                    logger.info(f"[ENCONTRADO STATS] ID: {STATS_SHARED_DATASET_ID}")
+
+    def _view_dataset(self):
+        if not STATS_SHARED_DATASET_ID: return
+        url = f"/dataset/unsynchronized/{STATS_SHARED_DATASET_ID}/"
+        with self.client.get(url, catch_response=True, name="/dataset/view [Stats]") as res:
+            if res.status_code in (200, 302):
+                res.success()
+            else:
+                res.failure(f"View failed: {res.status_code}")
+
+    def _download_dataset(self):
+        if not STATS_SHARED_DATASET_ID: return
+        url = f"/dataset/download/{STATS_SHARED_DATASET_ID}"
+        with self.client.get(url, catch_response=True, name="/dataset/download [Stats]") as res:
+            if res.status_code in (200, 302):
+                res.success()
+            else:
+                res.failure(f"Download failed: {res.status_code}")
+                
+class StatsUser(HttpUser):
+    tasks = [StatsWorkflow]
     wait_time = between(1, 3)
     host = get_host_for_locust_testing()
