@@ -5,7 +5,6 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <!-- --- CORREGIDO --- -->
     <meta name="description"
           content="Repository of beer datasets in CSV format integrated with Zenodo">
     <meta name="author" content="University of Seville">
@@ -16,17 +15,14 @@ chico sundermann">
 
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link rel="shortcut icon" href="{{ url_for("static", filename="img/icons/icon-250x250.png") }}"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" xintegrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
  
-    <!-- --- CORREGIDO --- -->
     <link rel="canonical" href="https://www.cervezahub.io"/>
 
     <title>{{ FLASK_APP_NAME }} - Repository of CSV Datasets</title>
 
     <link rel="stylesheet" href="{{ url_for("static", filename="css/app.css") }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-
-    <!-- --- LÓGICA ANTIGUA DE UVL ELIMINADA (Dropzone) --- -->
 
     <link rel="stylesheet" href="{{ url_for("static", filename="css/dropzone.css") }}">
     <link rel="stylesheet" href="{{ url_for("static", filename="css/own.css") }}">
@@ -38,15 +34,15 @@ chico sundermann">
 
     <nav id="sidebar" class="sidebar js-sidebar">
         <div class="sidebar-content js-simplebar">
-    <div style="display: flex; align-items: center;">
-        <a class="sidebar-brand" href="{{ url_for('explore.index') }}" style="flex-shrink: 0;">
-            <img src="{{ url_for("static", filename="img/logos/newLogo1.png") }}" 
-                 class="d-block"
-                 style="max-width: 50px; height: auto; margin-right: -12px;"> 
-        </a>
-        <img src="{{ url_for('static', filename='img/logos/cervezaImg.png') }}"
-         style="height: 40px; margin-right: 10px;">
-    </div>
+            <div style="display: flex; align-items: center;">
+                <a class="sidebar-brand" href="{{ url_for('public.index') }}" style="flex-shrink: 0;">
+                    <img src="{{ url_for("static", filename="img/logos/newLogo1.png") }}" 
+                         class="d-block"
+                         style="max-width: 50px; height: auto; margin-right: -12px;"> 
+                </a>
+                <img src="{{ url_for('static', filename='img/logos/cervezaImg.png') }}"
+                  style="height: 40px; margin-right: 10px;">
+            </div>
 
             <ul class="sidebar-nav">
 
@@ -69,7 +65,7 @@ chico sundermann">
                 <li class="sidebar-item {{ 'active' if request.endpoint == 'team.index' else '' }}">
                     <a class="sidebar-link" href="{{ url_for('team.index') }}">
                         <i class="align-middle" data-feather="users"></i> <span
-                            class="align-middle">Team</span>
+                                class="align-middle">Team</span>
                     </a>
                 </li>
 
@@ -93,7 +89,7 @@ chico sundermann">
                     </li>
 
                 {% else %}
-
+                    
                     <li class="sidebar-header">
                         Datasets
                     </li>
@@ -111,22 +107,39 @@ chico sundermann">
                                 class="align-middle">My datasets</span>
                         </a>
                     </li>
-                    <li class="sidebar-header">
-                        
-                            <a class="nav-link" href="{{ url_for('dataset.list_communities') }}">
-                            Comunidades
-                            </a>
-                        </li>
-                        
-                        {% if current_user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="sidebar-link" 
-                            href="{{ url_for('dataset.create_community') }}">
-                            + Crear Comunidad
-                            </a>
-                        </li>
-                        {% endif %}
                     
+                    <li class="sidebar-header">
+                        Comunidades
+                    </li>
+                    
+                    <li class="sidebar-item {{ 'active' if request.endpoint == 'dataset.list_communities' else '' }}">
+                        <a class="sidebar-link" href="{{ url_for('dataset.list_communities') }}">
+                            <i class="align-middle" data-feather="users"></i> <span class="align-middle">Ver Comunidades</span>
+                        </a>
+                    </li>
+                    
+                    {% if current_user.is_authenticated %}
+                    <li class="sidebar-item {{ 'active' if request.endpoint == 'dataset.create_community' else '' }}">
+                        <a class="sidebar-link" href="{{ url_for('dataset.create_community') }}">
+                            <i class="align-middle" data-feather="plus"></i> <span class="align-middle">Crear Comunidad</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.role and current_user.role.name == 'admin' %}
+                        
+                        <li class="sidebar-header">
+                            Administración
+                        </li>
+
+                        <li class="sidebar-item {{ 'active' if request.endpoint == 'admin.admin_index' else '' }}">
+                            <a class="sidebar-link" href="{{ url_for('admin.admin_index') }}">
+                                <i class="align-middle" data-feather="shield"></i> 
+                                <span class="align-middle">Gestionar Roles</span>
+                            </a>
+                        </li>
+
+                    {% endif %}
                     <li class="sidebar-header">
                         Options
                     </li>
@@ -160,7 +173,6 @@ chico sundermann">
             <div class="sidebar-cta text-center">
                 <div class="sidebar-cta-content">
                     <div class="text">
-                        <!-- --- CORREGIDO --- -->
                         Compilation build <a href="https://github.com/diverso-lab/cerveza-hub-2/releases/tag/{{ APP_VERSION }}" target="_blank">{{ APP_VERSION }}</a>
                     </div>
                 </div>
@@ -189,8 +201,8 @@ chico sundermann">
                     <li class="nav-item dropdown">
 
                         {% if current_user.is_anonymous %}
-                            <a class="nav-link  d-none d-sm-inline-block" href="{{ url_for('auth.login') }}">Login</a>
-                            <a class="nav-link  d-none d-sm-inline-block" href="{{ url_for('auth.show_signup_form') }}">Sign
+                            <a class="nav-link d-none d-sm-inline-block" href="{{ url_for('auth.login') }}">Login</a>
+                            <a class="nav-link d-none d-sm-inline-block" href="{{ url_for('auth.show_signup_form') }}">Sign
                                 up</a>
 
                         {% else %}
@@ -239,7 +251,6 @@ chico sundermann">
                     <div class="col-6 text-end">
                         <ul class="list-inline">
                             <li class="list-inline-item">
-                                <!-- --- CORREGIDO --- -->
                                 <a class="text-muted" href="https://github.com/cerveza-hub/cerveza-hub"
                                    target="_blank">
                                     <i class="align-middle" data-feather="github"></i>
@@ -253,9 +264,6 @@ chico sundermann">
     </div>
 </div>
 
-<!-- =========================================== -->
-<!-- ==   CITAS CORREGIDAS PARA CERVEZAHUB    == -->
-<!-- =========================================== -->
 <pre id="bibtex_cite" style="display: none">
 @article{cervezahub_team_2025,
     title = {CervezaHub: A CSV data repository using open science principles},
