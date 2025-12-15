@@ -4,7 +4,8 @@ from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 from app import db
 import secrets
-
+from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -23,6 +24,8 @@ class User(db.Model, UserMixin):
     
     data_sets = db.relationship("DataSet", backref="user", lazy=True)
     profile = db.relationship("UserProfile", backref="user", uselist=False)
+
+    active_sessions = db.relationship("UserSession", backref="user", lazy=True, cascade="all, delete-orphan")
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
@@ -95,3 +98,16 @@ class Role(db.Model):
 
     def __repr__(self):
         return f'<Role {self.name}>'
+    
+class UserSession (db.Model):
+    __tablename__ = 'user_sessions'
+    id = db.Column(db.Integer, primary_key = True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
+    session_key = db.Column(Text, unique = True, index = True, nullable = False)
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(255))
+    login_time = db.Column(db.DateTime, nullable = False, default = lambda:datetime.now(timezone.utc))
+    
+    def __repr__(self):
+        return f"<UserSession {self.user_id} - {self.session_key}>"
+    

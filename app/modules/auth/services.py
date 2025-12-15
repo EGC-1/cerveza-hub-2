@@ -5,12 +5,12 @@ from flask_login import current_user, login_user
 
 from app.modules.auth.models import User, Role 
 from app import db 
-from app.modules.auth.repositories import UserRepository
+from app.modules.auth.repositories import UserRepository, UserSessionRepository
 from app.modules.profile.models import UserProfile
 from app.modules.profile.repositories import UserProfileRepository
 from core.configuration.configuration import uploads_folder_name
 from core.services.BaseService import BaseService
-from flask import url_for, current_app, render_template
+from flask import url_for, current_app, render_template, request, session
 # Solo necesitamos la clase Message de flask_mail para construir el email
 from flask_mail import Message 
 
@@ -22,13 +22,72 @@ class AuthenticationService(BaseService):
         # Aquí inicializamos BaseService pasándole el repositorio obligatorio.
         super().__init__(repository=UserRepository()) 
         self.user_profile_repository = UserProfileRepository()
+        self.user_session_repository = UserSessionRepository()
 
     def login(self, email, password, remember=True):
         user = self.repository.get_by_email(email)
         if user is not None and user.check_password(password):
             login_user(user, remember=remember)
+            try:
+                self.create_session(user.id)
+            except Exception as e:
+                current_app.logger.error(f"Failed to create session for user {user.email}: {e}")
             return True
         return False
+
+    def create_session(self, user_id: int) -> str:
+        """
+        Crea y persiste una sesión de usuario, guarda la clave en `session` y
+        devuelve la clave de sesión usada.
+        """
+        # Intentamos recuperar la cookie de sesión de Flask; si no existe, generamos una.
+        session_key = request.cookies.get(current_app.config.get('SESSION_COOKIE_NAME', 'session'))
+        if not session_key:
+            session_key = secrets.token_hex(16)
+
+        # Guardamos la clave en la sesión del cliente para referencias posteriores.
+        session['user_session_key'] = session_key
+
+        try:
+            self.user_session_repository.save_session(
+                user_id=user_id,
+                session_key=session_key,
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string
+            )
+            # Commit en el repositorio si es necesario
+            try:
+                self.repository.session.commit()
+            except Exception:
+                # Si el commit falla, hacemos rollback y seguimos devolviendo la clave
+                self.repository.session.rollback()
+        except Exception as e:
+            current_app.logger.error(f"Failed to save session for user id {user_id}: {e}")
+
+        return session_key
+
+    def get_current_session_info(self, current_session_key: str, current_ip: str) -> dict | None:
+        """
+        Busca y formatea la información de la sesión actual del usuario.
+        Si no la encuentra en la BD, construye una respuesta temporal con la info disponible.
+        """
+        session_db = self.user_session_repository.get_session_by_key(session_key=session.get('user_session_key'))
+
+        if session_db:
+            return {
+                'key': session_db.session_key,
+                'device': session_db.user_agent,
+                'ip': session_db.ip_address,
+                'time': session_db.login_time.isoformat(),
+                'is_current': True
+            }
+        return {
+            'key': session.get('user_session_key'),
+            'device': request.user_agent.string,
+            'ip': current_ip,
+            'time': 'Ahora',
+            'is_current': True
+        }
 
     def is_email_available(self, email: str) -> bool:
         return self.repository.get_by_email(email) is None
@@ -127,6 +186,42 @@ class AuthenticationService(BaseService):
         Busca y retorna un usuario por su dirección de correo electrónico.
         """
         return User.query.filter_by(email=email).first()
+
+    def get_other_active_sessions(self, user_id: int, current_session_key: str) -> list[dict]:
+        """
+        Recupera todas las sesiones activas de un usuario, excluyendo la sesión actual
+        """
+        sessions = self.user_session_repository.get_by_user_id(user_id)
+        other_sessions = []
+        for s in sessions:
+            if s.session_key != current_session_key:
+                other_sessions.append({
+                    'key': s.session_key,
+                    'device': s.user_agent,
+                    'ip': s.ip_address,
+                    'time': s.login_time.isoformat(),
+                    'is_current': False
+                })
+        return other_sessions
+
+    def close_remote_session(self, user_id: int, session_key_to_close: str) -> bool:
+        """
+        Elimina el registro de la bd
+        """
+        session_to_check = self.user_session_repository.get_session_by_key(session_key= session_key_to_close)
+        if not session_to_check or session_to_check.user_id != user_id:
+            return False
+        deleted = self.user_session_repository.delete_by_key(session_key_to_close)
+        if deleted:
+            self.repository.session.commit()
+        return deleted
+
+    def is_session_valid(self, session_key: str) -> bool:
+        """
+        Checks if a session key exists in the database.
+        """
+        session_db = self.user_session_repository.get_session_by_key(session_key=session_key)
+        return session_db is not None
 
 authentication_service = AuthenticationService()
 

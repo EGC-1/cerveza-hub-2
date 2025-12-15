@@ -42,6 +42,12 @@ def login():
     form = LoginForm()
     if request.method == "POST" and form.validate_on_submit():
         if authentication_service.login(form.email.data, form.password.data):
+            
+            user = authentication_service.get_user_by_email(form.email.data)
+            
+            if user and user.role and user.role.name == 'admin':
+                return redirect(url_for("admin.admin_index"))
+
             return redirect(url_for("public.index"))
 
         return render_template("auth/login_form.html", form=form, error="Invalid credentials")
