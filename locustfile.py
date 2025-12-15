@@ -1,7 +1,6 @@
 import sys
 import os
 
-# Asegurar que Python encuentra los módulos
 sys.path.append(os.getcwd())
 
 try:
