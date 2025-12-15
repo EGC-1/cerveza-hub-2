@@ -2,17 +2,17 @@
 
 {% block content %}
 <div class="container my-5">
-    <h2>Crear Nueva Comunidad en {{ FLASK_APP_NAME }}</h2>
-    <p>Define el nombre, la descripción y sube el logo de tu comunidad.</p>
+    <h2>Create New Community</h2>
+    <p>Define the name, description, and upload the logo for your community.</p>
 
     <form method="POST" action="{{ url_for('dataset.create_community') }}" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
 
-        {# 💡 Mejora: Mostrar errores del formulario que no están asociados a un campo específico #}
+        {# 💡 Improvement: Display form errors not associated with a specific field #}
         {% if form.errors and not form.name.errors and not form.description.errors and not form.logo.errors %}
             <div class="alert alert-danger" role="alert">
-                Hubo un error al procesar el formulario. Por favor, revisa tus entradas.
-                {# Opcional: Mostrar todos los errores no específicos #}
+                There was an error processing the form. Please check your entries.
+                {# Optional: Display all non-specific errors #}
                 {% for field, errors in form.errors.items() %}
                     {% if field not in ['name', 'description', 'logo'] %}
                         {% for error in errors %}
@@ -22,7 +22,7 @@
                 {% endfor %}
             </div>
         {% endif %}
-        {# Fin Mejora #}
+        {# End Improvement #}
 
         <div class="row">
             <div class="col-md-8">
@@ -30,10 +30,10 @@
                 <div class="mb-3">
                     <label for="{{ form.name.id }}" class="form-label">{{ form.name.label }}</label>
                     {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }} 
-                    {# 💡 Clase 'is-invalid' para resaltar el campo en rojo #}
+                    {# 💡 'is-invalid' class to highlight the field in red #}
                     {% for error in form.name.errors %}
                         <div class="text-danger small mt-1">{{ error }}</div>
-                        {# Tu campo de nombre ya tiene este bloque. Si usas validate_name(), el error aparecerá aquí. #}
+                        {# Your name field already has this block. If you use validate_name(), the error will appear here. #}
                     {% endfor %}
                 </div>
                 
@@ -51,7 +51,7 @@
                     {% for error in form.logo.errors %}
                         <div class="text-danger small mt-1">{{ error }}</div>
                     {% endfor %}
-                    <small class="form-text text-muted">Archivos permitidos: JPG, JPEG, PNG.</small>
+                    <small class="form-text text-muted">Allowed files: JPG, JPEG, PNG.</small>
                 </div>
                 
             </div>
@@ -60,7 +60,7 @@
         <hr>
         
         {{ form.submit(class="btn btn-primary") }}
-        <a href="{{ url_for('dataset.list_communities') }}" class="btn btn-secondary">Cancelar</a>
+        <a href="{{ url_for('dataset.list_communities') }}" class="btn btn-secondary">Cancel</a>
     </form>
 </div>
 {% endblock %}

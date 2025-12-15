@@ -2,15 +2,15 @@
 
 {% block content %}
 <div class="container my-5">
-    <h2>Explorar Comunidades ({{ communities|length }})</h2>
-    <p>Navega y encuentra conjuntos de datos temáticos.</p>
+    <h2>Explore Communities ({{ communities|length }})</h2>
+    <p>Browse and find thematic datasets.</p>
 
     <div class="row">
         {% if communities %}
             {% for community in communities %}
                 <div class="col-md-4 mb-4">
                     <div class="card h-100 shadow-sm">
-                        <img src="{{ url_for('dataset.serve_community_logo', community_id=community.id) }}" alt="Logo de {{ community.name }}" class="card-img-top" style="max-height: 200px; object-fit: cover;">
+                        <img src="{{ url_for('dataset.serve_community_logo', community_id=community.id) }}" alt="Logo of {{ community.name }}" class="card-img-top" style="max-height: 200px; object-fit: cover;">
                              
                         
                         <div class="card-body">
@@ -22,9 +22,9 @@
                         
                         <div class="card-footer">
                             <a href="{{ url_for('dataset.view_community', community_id=community.id) }}" 
-                               class="btn btn-sm btn-outline-primary">Ver Comunidad</a>
+                               class="btn btn-sm btn-outline-primary">View Community</a>
                             <small class="text-muted float-end">
-                                Creada: {{ community.created_at.strftime('%Y-%m-%d') }}
+                                Created: {{ community.created_at.strftime('%Y-%m-%d') }}
                             </small>
                         </div>
                     </div>
@@ -33,7 +33,7 @@
         {% else %}
             <div class="col-12">
                 <div class="alert alert-info" role="alert">
-                    Aún no hay comunidades creadas. ¡Sé el primero!
+                    No communities have been created yet. Be the first one!
                 </div>
             </div>
         {% endif %}

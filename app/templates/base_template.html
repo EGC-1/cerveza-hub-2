@@ -10,7 +10,7 @@
     <meta name="author" content="University of Seville">
     <meta name="keywords"
           content="cervezahub, csv, beer, datasets, software product line, university of seville,
-           university of malaga, university of ulm, david romero, david benavides, jose a galindo, jose miguel horcas,
+            university of malaga, university of ulm, david romero, david benavides, jose a galindo, jose miguel horcas,
 chico sundermann">
 
     <link rel="preconnect" href="https://fonts.gstatic.com">
@@ -65,7 +65,7 @@ chico sundermann">
                 <li class="sidebar-item {{ 'active' if request.endpoint == 'team.index' else '' }}">
                     <a class="sidebar-link" href="{{ url_for('team.index') }}">
                         <i class="align-middle" data-feather="users"></i> <span
-                                class="align-middle">Team</span>
+                                 class="align-middle">Team</span>
                     </a>
                 </li>
 
@@ -84,7 +84,7 @@ chico sundermann">
                     <li class="sidebar-item {{ 'active' if request.endpoint == 'auth.show_signup_form' else '' }}">
                         <a class="sidebar-link" href="{{ url_for('auth.show_signup_form') }}">
                             <i class="align-middle" data-feather="user-plus"></i> <span
-                                class="align-middle">Sign Up</span>
+                                 class="align-middle">Sign Up</span>
                         </a>
                     </li>
 
@@ -97,31 +97,31 @@ chico sundermann">
                     <li class="sidebar-item {{ 'active' if request.endpoint == 'dataset.create_dataset' else '' }}">
                         <a class="sidebar-link" href="{{ url_for('dataset.create_dataset') }}">
                             <i class="align-middle" data-feather="upload"></i> <span
-                                class="align-middle">Upload dataset</span>
+                                 class="align-middle">Upload dataset</span>
                         </a>
                     </li>
 
                     <li class="sidebar-item {{ 'active' if request.endpoint == 'dataset.list_dataset' else '' }}">
                         <a class="sidebar-link" href="{{ url_for('dataset.list_dataset') }}">
                             <i class="align-middle" data-feather="list"></i> <span
-                                class="align-middle">My datasets</span>
+                                 class="align-middle">My datasets</span>
                         </a>
                     </li>
                     
                     <li class="sidebar-header">
-                        Comunidades
+                        Communities
                     </li>
                     
                     <li class="sidebar-item {{ 'active' if request.endpoint == 'dataset.list_communities' else '' }}">
                         <a class="sidebar-link" href="{{ url_for('dataset.list_communities') }}">
-                            <i class="align-middle" data-feather="users"></i> <span class="align-middle">Ver Comunidades</span>
+                            <i class="align-middle" data-feather="users"></i> <span class="align-middle">View Communities</span>
                         </a>
                     </li>
                     
                     {% if current_user.is_authenticated %}
                     <li class="sidebar-item {{ 'active' if request.endpoint == 'dataset.create_community' else '' }}">
                         <a class="sidebar-link" href="{{ url_for('dataset.create_community') }}">
-                            <i class="align-middle" data-feather="plus"></i> <span class="align-middle">Crear Comunidad</span>
+                            <i class="align-middle" data-feather="plus"></i> <span class="align-middle">Create Community</span>
                         </a>
                     </li>
                     {% endif %}
@@ -129,13 +129,13 @@ chico sundermann">
                     {% if current_user.role and current_user.role.name == 'admin' %}
                         
                         <li class="sidebar-header">
-                            Administración
+                            Administration
                         </li>
 
                         <li class="sidebar-item {{ 'active' if request.endpoint == 'admin.admin_index' else '' }}">
                             <a class="sidebar-link" href="{{ url_for('admin.admin_index') }}">
                                 <i class="align-middle" data-feather="shield"></i> 
-                                <span class="align-middle">Gestionar Roles</span>
+                                <span class="align-middle">Manage Roles</span>
                             </a>
                         </li>
 
@@ -147,7 +147,7 @@ chico sundermann">
                     <li class="sidebar-item {{ 'active' if request.endpoint == 'profile.edit_profile' else '' }}">
                         <a class="sidebar-link" href="{{ url_for('profile.edit_profile') }}">
                             <i class="align-middle" data-feather="user"></i> <span
-                                class="align-middle">Edit profile</span>
+                                 class="align-middle">Edit profile</span>
                         </a>
                     </li>
 
@@ -161,7 +161,7 @@ chico sundermann">
                     <li class="sidebar-item">
                         <a class="sidebar-link" href="{{ url_for('auth.logout') }}">
                             <i class="align-middle" data-feather="log-out"></i> <span
-                                class="align-middle">Log out</span>
+                                 class="align-middle">Log out</span>
                         </a>
                     </li>
 
@@ -267,27 +267,27 @@ chico sundermann">
 <pre id="bibtex_cite" style="display: none">
 @article{cervezahub_team_2025,
     title = {CervezaHub: A CSV data repository using open science principles},
-    author = {Equipo 1 y 2},
-    journal = {Evolución y Gestión de la Configuración},
+    author = {Team 1 and 2},
+    journal = {Software Evolution and Configuration Management},
     year = {2025}
 }
 </pre>
-                                
+            
 <pre id="ris_cite" style="display: none">
 TY  - JOUR
 T1  - CervezaHub: A CSV data repository using open science principles
-AU  - Equipo 1 y 2
-JO  - Evolución y Gestión de la Configuración
+AU  - Team 1 and 2
+JO  - Software Evolution and Configuration Management
 PY  - 2025
 ER  - 
 </pre>
 
 <pre id="text_cite" style="display: none;">
-Equipo 1 y 2 (2025). CervezaHub: A CSV data repository using open science principles. Evolución y Gestión de la Configuración.
+Team 1 and 2 (2025). CervezaHub: A CSV data repository using open science principles. Software Evolution and Configuration Management.
 </pre>
 
 <pre id="apa_cite" style="display: none;">
-Equipo 1 y 2. (2025). CervezaHub: A CSV data repository using open science principles. Evolución y Gestión de la Configuración.
+Team 1 and 2. (2025). CervezaHub: A CSV data repository using open science principles. Software Evolution and Configuration Management.
 </pre>
 
 <script src="{{ url_for("static", filename="js/app.js") }}"></script>

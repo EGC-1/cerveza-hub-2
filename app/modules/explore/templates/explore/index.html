@@ -9,7 +9,7 @@
     <div class="row">
 
         <h3 class="h3 mb-3">
-                <span id="results_number"></span>
+                <span id="results_number"></span> results
             </h3>
 
         <div class="col-lg-7 scrollable-column">
@@ -21,7 +21,7 @@
 
                 <div class="col text-center" id="results_not_found">
                     <img src="{{ url_for('static', filename='img/items/not_found.svg') }}"
-                         style="width: 50%; max-width: 100px; height: auto; margin-top: 30px"/>
+                             style="width: 50%; max-width: 100px; height: auto; margin-top: 30px"/>
                     <p style="margin-top: 20px">
                         We have not found any datasets that meet your search criteria. <br>How about trying some others?
                     </p>
@@ -51,7 +51,7 @@
                                     Search for datasets by title, description, authors, tags, CSV files...
                                 </label>
                                 <input class="form-control" id="query" name="query" required="" type="text"
-                                       value="" autofocus>
+                                           value="" autofocus>
                             </div>
                         </div>
 
@@ -60,7 +60,7 @@
                                 <label class="form-label" for="publication_type">Filter by publication
                                     type</label>
                                 <select class="form-control" id="publication_type" name="publication_type"
-                                        required="">
+                                            required="">
                                     <option value="any">Any</option>
                                     <option value="none">None</option>
                                     <option value="annotationcollection">Annotation Collection</option>
@@ -112,15 +112,15 @@
                                 Sort results by creation date
                                 <label class="form-check">
                                     <input class="form-check-input" type="radio" value="newest" name="sorting"
-                                           checked="">
+                                            checked="">
                                     <span class="form-check-label">
-                                      Newest first
+                                        Newest first
                                     </span>
                                 </label>
                                 <label class="form-check">
                                     <input class="form-check-input" type="radio" value="oldest" name="sorting">
                                     <span class="form-check-label">
-                                      Oldest first
+                                        Oldest first
                                     </span>
                                 </label>
                             </div>

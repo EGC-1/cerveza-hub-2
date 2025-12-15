@@ -1,118 +1,118 @@
 {% extends "base_template.html" %}
 
 {% block title %}
-      Gestión de Usuarios - Admin
+     User Management - Admin
 {% endblock %}
 
 {% block content %}
 
-      <div class="container mt-5">
-            <h1>Gestión de Usuarios y Roles</h1>
+    <div class="container mt-5">
+            <h1>User and Role Management</h1>
             <hr>
 
-            {# Bloque para mostrar mensajes Flash (éxito/error) #}
+            {# Block to display Flash messages (success/error) #}
             {% with messages = get_flashed_messages(with_categories=true) %}
-                  {% if messages %}
-                        <div class="flashes mb-3">
-                              {% for category, message in messages %}
-                                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                              {% endfor %}
-                        </div>
-                  {% endif %}
+                {% if messages %}
+                    <div class="flashes mb-3">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                    </div>
+                {% endif %}
             {% endwith %}
 
-            {# Formulario de Edición (Solo se muestra si hay un usuario seleccionado) #}
+            {# Edit Form (Only shown if a user is selected) #}
             {% if form and user_to_edit %}
             
-                  <div class="card mb-4 shadow-sm border-primary">
+                    <div class="card mb-4 shadow-sm border-primary">
                         <div class="card-header bg-primary text-white">
-                              <h5 class="mb-0">Editando Usuario: <b>{{ user_to_edit.email }}</b> (ID: {{ user_to_edit.id }})</h5>
+                            <h5 class="mb-0">Editing User: <b>{{ user_to_edit.email }}</b> (ID: {{ user_to_edit.id }})</h5>
                         </div>
                         <div class="card-body">
-                              
-                              <form method="POST" action="{{ url_for('admin.edit_user', user_id=user_to_edit.id) }}">
-                                    {{ form.hidden_tag() }} 
+                            
+                            <form method="POST" action="{{ url_for('admin.edit_user', user_id=user_to_edit.id) }}">
+                                {{ form.hidden_tag() }} 
+                                
+                                {# Email Field (Read-only if configured in forms.py) #}
+                                <div class="form-group mb-3">
+                                    {{ form.email.label(class="form-label") }}
+                                    {{ form.email(class="form-control") }}
+                                    {% for error in form.email.errors %}
+                                            <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+
+                                {# Roles Field #}
+                                <div class="form-group mb-4">
+                                    {{ form.roles.label(class="form-label") }}
                                     
-                                    {# Campo Email (Solo lectura si así se configuró en forms.py) #}
-                                    <div class="form-group mb-3">
-                                          {{ form.email.label(class="form-label") }}
-                                          {{ form.email(class="form-control") }}
-                                          {% for error in form.email.errors %}
-                                                <div class="text-danger small">{{ error }}</div>
-                                          {% endfor %}
-                                    </div>
+                                    {# IMPORTANT: size="1" for simple dropdown menu (single role) #}
+                                    {{ form.roles(class="form-select", size="1") }} 
+                                    
+                                    {% for error in form.roles.errors %}
+                                            <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
 
-                                    {# Campo Roles #}
-                                    <div class="form-group mb-4">
-                                          {{ form.roles.label(class="form-label") }}
-                                          
-                                          {# IMPORTANTE: size="1" para menú desplegable simple (un solo rol) #}
-                                          {{ form.roles(class="form-select", size="1") }} 
-                                          
-                                          {% for error in form.roles.errors %}
-                                                <div class="text-danger small">{{ error }}</div>
-                                          {% endfor %}
-                                    </div>
-
-                                    {# Botones de Acción #}
-                                    <div class="d-flex justify-content-between align-items-center">
-                                          {# Botón Guardar (Submit) #}
-                                          {{ form.submit(class="btn btn-success") }}
-                                          
-                                          {# Botón Cancelar (Enlace a /admin) #}
-                                          <a href="{{ url_for('admin.admin_index') }}" class="btn btn-secondary">
-                                                <i data-feather="x-circle" class="align-middle"></i> Cancelar y Volver
-                                          </a>
-                                    </div>
-                              </form>
+                                {# Action Buttons #}
+                                <div class="d-flex justify-content-between align-items-center">
+                                    {# Save Button (Submit) #}
+                                    {{ form.submit(class="btn btn-success", value="Save Changes") }}
+                                    
+                                    {# Cancel Button (Link to /admin) #}
+                                    <a href="{{ url_for('admin.admin_index') }}" class="btn btn-secondary">
+                                            <i data-feather="x-circle" class="align-middle"></i> Cancel and Go Back
+                                    </a>
+                                </div>
+                            </form>
                         </div>
-                  </div>
+                    </div>
 
-                  <hr>
+                    <hr>
             {% endif %}
 
 
-            {# Tabla de Listado de Usuarios #}
-            <h2>Lista de Usuarios del Sistema</h2>
+            {# User Listing Table #}
+            <h2>System User List</h2>
             
             <div class="table-responsive">
-                  <table class="table table-striped table-hover">
-                        <thead class="table-light">
-                              <tr>
-                                    <th>ID</th>
-                                    <th>Email</th>
-                                    <th>Rol Actual</th>
-                                    <th>Acciones</th>
-                              </tr>
-                        </thead>
-                        <tbody>
-                              {% for user in users %}
-                              <tr>
-                                    <td>{{ user.id }}</td>
-                                    <td>{{ user.email }}</td>
-                                    <td>
-                                          {% if user.role %} 
-                                                <span class="badge bg-info text-dark">{{ user.role.name | capitalize }}</span>
-                                          {% else %}
-                                                <span class="badge bg-secondary">Sin Rol</span>
-                                          {% endif %} 
-                                    </td>
-                                    <td>
-                                          {# Enlace para editar este usuario específico #}
-                                          <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" 
-                                                 class="btn btn-sm btn-outline-primary">
-                                                 <i data-feather="edit"></i> Editar Rol
-                                          </a>
-                                    </td>
-                              </tr>
-                              {% else %}
-                              <tr>
-                                    <td colspan="4" class="text-center text-muted">No hay usuarios registrados.</td>
-                              </tr>
-                              {% endfor %}
-                        </tbody>
-                  </table>
+                <table class="table table-striped table-hover">
+                    <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Email</th>
+                                <th>Current Role</th>
+                                <th>Actions</th>
+                            </tr>
+                    </thead>
+                    <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.role %} 
+                                            <span class="badge bg-info text-dark">{{ user.role.name | capitalize }}</span>
+                                    {% else %}
+                                            <span class="badge bg-secondary">No Role</span>
+                                    {% endif %} 
+                                </td>
+                                <td>
+                                    {# Link to edit this specific user #}
+                                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" 
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i data-feather="edit"></i> Edit Role
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No registered users found.</td>
+                            </tr>
+                            {% endfor %}
+                    </tbody>
+                </table>
             </div>
-      </div>
+    </div>
 
 {% endblock %}
