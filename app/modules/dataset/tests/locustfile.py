@@ -326,7 +326,7 @@ class GithubDatasetUser(HttpUser):
 SHARED_DATASET_ID = None
 CREATION_LOCK = Semaphore()
 DATASET_CREATED = False
-SHARED_TITLE = f"MASTER_LOAD_{str(uuid.uuid4())[:6]}"
+SHARED_TITLE = f"COUNTER_LOCUST_TEST_{str(uuid.uuid4())[:6]}"
 
 def get_csrf_token(html_text):
     if not isinstance(html_text, str): return None
@@ -378,13 +378,28 @@ class SharedDownloadWorkflow(SequentialTaskSet):
             gevent.sleep(1)
 
     def _create_master_dataset(self):
-        global SHARED_DATASET_ID, SHARED_TITLE
-        
+        global SHARED_DATASET_ID
         r = self.client.get("/dataset/upload")
         csrf = get_csrf_token(r.text)
         if not csrf: return
 
-        csv_file = io.BytesIO(b"col1,col2\nval1,val2")
+        header = "name,brewery,style,abv,ibu\n"
+        
+        rows_data = [
+            "Heineken,Heineken Brouwerijen,Lager,5.0,19",
+            "Corona,Grupo Modelo,Lager,4.5,18",
+            "Mahou,Mahou San Miguel,Pilsner,5.5,25",
+            "Guinness,St James Gate,Stout,4.2,45",
+            "Stella Artois,Anheuser-Busch,Pilsner,5.0,24"
+        ]
+        
+        csv_content = header
+        for _ in range(12): 
+            for row in rows_data:
+                csv_content += f"{row}\n"
+
+        csv_file = io.BytesIO(csv_content.encode('utf-8'))
+        
         files = {"csv_file": ("master.csv", csv_file, "text/csv")}
         
         data = {
