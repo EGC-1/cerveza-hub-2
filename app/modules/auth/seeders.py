@@ -14,6 +14,7 @@ class AuthSeeder(BaseSeeder):
             {'name': 'admin', 'description': 'Acceso total y gestión de usuarios.'},
             {'name': 'curator', 'description': 'Puede añadir, editar y eliminar contenido.'},
             {'name': 'standard user', 'description': 'Usuario autenticado.'},
+            {'name': 'guest', 'description': 'Usuario invitado.'},
         ]
 
         print("--- 1. Verificando y creando Roles ---")
