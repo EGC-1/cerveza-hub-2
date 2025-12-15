@@ -1,0 +1,77 @@
+{% extends "base_template.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+
+    <h1 class="h2 mb-3">
+        <b>Admin</b> Dashboard
+    </h1>
+
+    <div class="row">
+
+        <div class="mb-2 col-xl-8 col-lg-12 col-md-12 col-sm-12">
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h2>
+                            <a href="{{ url_for('admin.manage_roles') }}">
+                                Gestión de Usuarios y Roles
+                            </a>
+                        </h2>
+                        <div>
+                            <span class="badge bg-primary">Prioridad Alta</span>
+                        </div>
+                    </div>
+                    <p class="text-secondary">Administra los permisos, asigna roles de Admin/User y edita emails.</p>
+
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <a href="{{ url_for('admin.manage_roles') }}" class="btn btn-outline-primary btn-sm"
+                               style="border-radius: 5px;">
+                                <i data-feather="users" class="center-button-icon"></i>
+                                Ir al listado de usuarios
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-12 col-md-12 col-sm-12">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h2> <b>System Stats</b> </h2>
+                            
+                            <h4 class="h4 mb-3" class="stats-color">
+                                <i data-feather="users" class="align-middle mr-2 stats-color"></i>
+                                {{ user_count }} usuarios registrados
+                            </h4>
+                            
+                            <h4 class="h4 mb-3" class="stats-color">
+                                <i data-feather="shield" class="align-middle mr-2 stats-color"></i>
+                                Modo Admin Activo
+                            </h4>
+                        </div>                    
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="card card-dark">
+                        <h2 class="card-title card-title-light">
+                            Welcome, Admin!
+                        </h2>
+                        <div class="card-body card-body-slim">
+                            You have full control over the platform. Be careful with your power!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+{% endblock %}
