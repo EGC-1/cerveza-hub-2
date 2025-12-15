@@ -1,0 +1,24 @@
+# Formato obligatorio:
+# <tipo>: <breve descripción>
+#
+# Tipos de commit permitidos:
+# feat     -> cambios que implementen una nueva funcionalidad
+# fix      -> cambios que realicen una corrección sobre código ya existente
+# docs     -> cambios relacionados con documentación
+# style    -> cambios en el formato de código y fuentes
+# refactor -> cambios y mejoras en el código sin cambio funcional
+# test     -> cambios y corrección en el código relacionado a pruebas
+#
+# Reglas:
+# - La descripción debe ser breve, clara y definir los cambios realizados
+# - Realizar commits atómicos por funcionalidad
+#
+# Ejemplos válidos:
+# feat: añadir sistema de autenticación
+# fix: corregir error en validación de formulario
+# docs: actualizar guía de instalación
+# style: reformatear código según estándar
+# refactor: simplificar lógica de cálculo
+# test: añadir pruebas unitarias de usuarios
+
+<tipo>: <breve descripción>
