@@ -1,5 +1,5 @@
 from app.modules.auth.models import User
-from flask import redirect, render_template, request, url_for, flash, current_app, session
+from flask import redirect, render_template, request, url_for, flash
 from flask_login import current_user, login_user, logout_user
 
 from app.modules.auth import auth_bp
@@ -10,24 +10,6 @@ from app.modules.profile.services import UserProfileService
 authentication_service = AuthenticationService()
 user_profile_service = UserProfileService()
 
-@auth_bp.before_app_request
-def check_active_session():
-    """
-    Runs before every request to ensure the user's session is still valid.
-    If the session key is not in the database, it means it has been remotely
-    terminated, so we log the user out.
-    """
-    if not current_user.is_authenticated:
-        return
-
-    if request.endpoint and (request.endpoint.startswith('auth.') or request.endpoint == 'static'):
-        return
-
-    user_session_key = session.get('user_session_key')
-    if not user_session_key or not authentication_service.is_session_valid(user_session_key):
-        logout_user()
-        flash("Your session has been terminated.", "warning")
-        return redirect(url_for('auth.login'))
 
 @auth_bp.route("/signup/", methods=["GET", "POST"])
 def show_signup_form():
@@ -47,7 +29,6 @@ def show_signup_form():
 
         # Log user
         login_user(user, remember=True)
-        session['user_session_key'] = authentication_service.create_session(user.id)
         return redirect(url_for("public.index"))
 
     return render_template("auth/signup_form.html", form=form)
@@ -60,14 +41,14 @@ def login():
 
     form = LoginForm()
     if request.method == "POST" and form.validate_on_submit():
-        credentials_are_valid = authentication_service.login(form.email.data, form.password.data)
-        if credentials_are_valid:
+        if authentication_service.login(form.email.data, form.password.data):
+            
             user = authentication_service.get_user_by_email(form.email.data)
-            login_user(user, remember=True)
-            session['user_session_key'] = authentication_service.create_session(user.id)
+            
+            if user and user.role and user.role.name == 'admin':
+                return redirect(url_for("admin.admin_index"))
 
             return redirect(url_for("public.index"))
-
 
         return render_template("auth/login_form.html", form=form, error="Invalid credentials")
 
@@ -86,9 +67,7 @@ def forgot_password_request():
     Si el email existe, envía el enlace de restablecimiento.
     """
     if current_user.is_authenticated:
-        # Esta ruta es llamada por test_recover_password_get_authenticated_redirects
         return redirect(url_for("public.index"))
-    
     form = RequestResetForm()
     
     if form.validate_on_submit():
@@ -119,7 +98,6 @@ def reset_token(token):
     2. Si es válido, permite al usuario establecer una nueva contraseña.
     """
     if current_user.is_authenticated:
-        # Esta ruta es llamada por test_reset_token_get_authenticated_redirects
         return redirect(url_for("public.index"))
 
     user: User = User.verify_reset_token(token)
