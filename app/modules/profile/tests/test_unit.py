@@ -10,15 +10,23 @@ from app.modules.profile.models import UserProfile
 def test_client(test_client):
     """
     Extends the test_client fixture to add additional specific data for module testing.
-    for module testing (por example, new users)
+    Creates a standard user and an administrator user.
     """
     with test_client.application.app_context():
         user_test = User(email="user@example.com", password="test1234")
         db.session.add(user_test)
-        db.session.commit()
+        db.session.commit() 
 
         profile = UserProfile(user_id=user_test.id, name="Name", surname="Surname")
         db.session.add(profile)
+        
+        admin_test = User(email="admin@example.com", password="admin1234")
+        db.session.add(admin_test)
+        db.session.commit()
+
+        admin_profile = UserProfile(user_id=admin_test.id, name="Admin", surname="Superuser")
+        db.session.add(admin_profile)
+        
         db.session.commit()
 
     yield test_client
@@ -29,21 +37,18 @@ def test_edit_profile_page_get(test_client):
     """
     from app.modules.auth.models import User
     from app.modules.profile.models import UserProfile
-    from app import db
-
-    user = User.query.filter_by(email="user@example.com").first()
-    if not user:
-        user = User(email="user@example.com", password="test1234")
-        db.session.add(user)
-        
-        db.session.flush()       
-        db.session.refresh(user) 
-
-        profile = UserProfile(user_id=user.id, name="Name", surname="Surname")
-        db.session.add(profile)
-        db.session.commit()
-
+    
     login_response = login(test_client, "user@example.com", "test1234")
+    
+    response = test_client.get("/profile/edit")
+    assert response.status_code == 200
+
+def test_admin_profile_access(test_client):
+    """
+    Test opcional para verificar que el admin también funciona.
+    """
+    logout(test_client) 
+    login(test_client, "admin@example.com", "admin1234")
     
     response = test_client.get("/profile/edit")
     assert response.status_code == 200
