@@ -417,3 +417,67 @@ def test_verify_reset_token_no_expiration(mock_db_session, mock_query, mock_date
     assert mock_user.token_expiration is None
     # Verifica que se hizo commit de la limpieza
     mock_db_session.commit.assert_called_once()
+
+def test_login_success_admin(test_client):
+        """
+        Prueba que el administrador puede iniciar sesión correctamente y es redirigido
+        al panel de administración.
+        """
+        from app.modules.auth.models import User, Role, UserSession
+        from app import db
+        from flask import url_for
+
+        # 1. LIMPIEZA COMPLETA:
+        # Forzamos logout para que el servidor limpie la sesión actual si existe.
+        test_client.get("/logout", follow_redirects=True)
+        
+        # 2. LIMPIEZA DB: Borramos el usuario de prueba y sus sesiones
+        existing_user = User.query.filter_by(email="admin@example.com").first()
+        if existing_user:
+            UserSession.query.filter_by(user_id=existing_user.id).delete()
+            db.session.delete(existing_user)
+            db.session.commit()
+
+        # 3. PREPARACIÓN DE ROL:
+        # Buscamos el rol 'admin'. Si tu app usa 'Admin' (mayúscula), cámbialo aquí.
+        role = Role.query.filter_by(name='admin').first()
+        if not role:
+            role = Role(name='admin')
+            db.session.add(role)
+            db.session.commit()
+
+        # 4. CREACIÓN USUARIO:
+        # Añadimos active=True por si tu app requiere usuarios activados.
+        user = User(email="admin@example.com", password="admin1234", role=role)
+        # Si tu modelo tiene campo 'active' o 'is_active', descomenta la siguiente línea:
+        # user.active = True 
+        db.session.add(user)
+        db.session.commit()
+
+        # 5. EJECUCIÓN: Login
+        response = test_client.post(
+            "/login",
+            data=dict(email="admin@example.com", password="admin1234"),
+            follow_redirects=True
+        )
+
+        # 6. VERIFICACIÓN
+        # Si esto falla, imprime la ruta para depurar
+        if response.request.path != url_for("admin.admin_index"):
+            print(f"DEBUG: Se redirigió a {response.request.path} en lugar de /admin/")
+            
+        assert response.request.path == url_for("admin.admin_index"), "El admin debería ir al panel de control."
+
+def test_login_unsuccessful_admin_bad_password(test_client):
+        """
+        Prueba que el login falla para un admin con una contraseña incorrecta.
+        """
+        from flask import url_for
+        
+        response = test_client.post(
+            "/login", 
+            data=dict(email="admin@example.com", password="wrong_admin_pass"), 
+            follow_redirects=True
+        )
+
+        assert response.request.path == url_for("public.index"), "Debería redirigir al inicio (public.index) tras fallo."
