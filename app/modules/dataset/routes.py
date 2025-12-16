@@ -325,6 +325,7 @@ def get_dataset_stats(dataset_id):
 
     total_views = DSViewRecord.query.filter_by(dataset_id=dataset_id).count()
     total_downloads = dataset.download_count
+    total_interactions = total_views + total_downloads
     dataset_age_in_days = (datetime.now(timezone.utc).replace(tzinfo=None) - dataset.created_at).days
     authors_number = len(dataset.ds_meta_data.authors)
     filas_count = dataset.row_count or 0
@@ -345,6 +346,7 @@ def get_dataset_stats(dataset_id):
         dataset=dataset,
         total_views=total_views,
         total_downloads=total_downloads,
+        interactions = total_interactions
         dataset_age_in_days=dataset_age_in_days,
         authors_number=authors_number,
         filas_count=filas_count,
