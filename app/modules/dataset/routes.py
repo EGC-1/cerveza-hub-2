@@ -346,7 +346,7 @@ def get_dataset_stats(dataset_id):
         dataset=dataset,
         total_views=total_views,
         total_downloads=total_downloads,
-        interactions = total_interactions
+        interactions = total_interactions,
         dataset_age_in_days=dataset_age_in_days,
         authors_number=authors_number,
         filas_count=filas_count,
